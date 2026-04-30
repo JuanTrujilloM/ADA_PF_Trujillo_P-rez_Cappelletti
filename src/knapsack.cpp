@@ -92,25 +92,25 @@ static int contarItemsQueCaben(const vector<ItemBW>& items, int capacidad) {
     return cantidad;
 }
 
-// Crea la version experimental con TotalCharges escalado.
+// Crea la versión experimental con TotalCharges escalado
 static vector<ItemBW> construirItemsConPesoAjustado(const vector<ItemBW>& items) {
-    // Copiamos para conservar la version literal.
+    // Copiamos para conservar la versión literal
     vector<ItemBW> ajustados = items;
     for (auto& item : ajustados) {
-        // Este peso es solo para el experimento ajustado.
+        // Este peso es solo para el experimento ajustado
         item.peso = static_cast<int>(round(item.totalCharges / 100.0));
     }
     return ajustados;
 }
 
-// Sirve para explicar si cualquier trio entra completo.
+// Sirve para explicar si cualquier trio entra completo
 static int maximoPesoTrio(const vector<ItemBW>& items) {
     int maximo = 0;
     int n = static_cast<int>(items.size());
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             for (int k = j + 1; k < n; ++k) {
-                // Guardamos el trio mas pesado.
+                // Guardamos el trio mas pesado
                 maximo = max(maximo, items[i].peso + items[j].peso + items[k].peso);
             }
         }
@@ -118,13 +118,13 @@ static int maximoPesoTrio(const vector<ItemBW>& items) {
     return maximo;
 }
 
-// Imprime los 50 items antes de correr DP.
+// Imprime los 50 items antes de correr DP
 static void imprimirTablaItems(ostream& out, const vector<ItemBW>& items) {
     out << "Solicitudes consideradas antes de la DP\n";
     out << "customerID,tenure,MonthlyCharges,TotalCharges,peso,valor\n";
     out << fixed << setprecision(2);
     for (const auto& item : items) {
-        // Dejamos visibles los datos originales y los calculados.
+        // Dejamos visibles los datos originales y los calculados
         out << item.customerID << ","
             << item.tenure << ","
             << item.monthlyCharges << ","
@@ -134,7 +134,7 @@ static void imprimirTablaItems(ostream& out, const vector<ItemBW>& items) {
     }
 }
 
-// Imprime la seleccion del experimento ajustado.
+// Imprime la seleccion del experimento ajustado
 static void imprimirSeleccionAjustada(ostream& out, const vector<ItemBW>& seleccionados) {
     out << "customerID,peso_ajustado,valor\n";
     if (seleccionados.empty()) {
@@ -147,7 +147,7 @@ static void imprimirSeleccionAjustada(ostream& out, const vector<ItemBW>& selecc
     }
 }
 
-// Imprime un trio con su ratio para revisar el codicioso.
+// Imprime un trio con su ratio para revisar el codicioso
 static void imprimirTablaTrio(ostream& out, const vector<ItemBW>& trio) {
     out << left << setw(15) << "customerID"
         << right << setw(10) << "peso"
@@ -157,7 +157,7 @@ static void imprimirTablaTrio(ostream& out, const vector<ItemBW>& trio) {
 
     out << fixed << setprecision(4);
     for (const auto& item : trio) {
-        // Ratio usado por el algoritmo codicioso.
+        // Ratio usado por el algoritmo codicioso
         out << left << setw(15) << item.customerID
             << right << setw(10) << item.peso
             << setw(10) << item.valor
@@ -165,7 +165,7 @@ static void imprimirTablaTrio(ostream& out, const vector<ItemBW>& trio) {
     }
 }
 
-// Imprime codicioso vs DP en formato facil de leer.
+// Imprime codicioso vs DP en formato facil de leer
 static void imprimirComparacion(ostream& out,
                                 const vector<ItemBW>& seleccionCodiciosa,
                                 int valorCodicioso,
@@ -190,25 +190,25 @@ static void imprimirComparacion(ostream& out,
 vector<ItemBW> construirItemsActivos(const vector<Solicitud>& solicitudesOrdenadas,
                                      int maxItems) {
     vector<ItemBW> items;
-    // Reservamos espacio para las 50 solicitudes pedidas.
+    // Reservamos espacio para las 50 solicitudes pedidas
     items.reserve(maxItems);
 
     for (const auto& solicitud : solicitudesOrdenadas) {
-        // Activo significa Churn == No, o sea churn == false.
+        // Activo significa Churn == No, o sea churn == false
         if (!solicitud.churn) {
             ItemBW item;
-            // Guardamos datos originales para poder mostrar trazabilidad.
+            // Guardamos datos originales para poder mostrar trazabilidad
             item.customerID = solicitud.customerID;
             item.tenure = solicitud.tenure;
             item.monthlyCharges = solicitud.monthlyCharges;
             item.totalCharges = solicitud.totalCharges;
-            // Formula literal del enunciado.
+            // Formula literal del enunciado
             item.peso = static_cast<int>(round(solicitud.totalCharges));
-            // Valor pedido por el enunciado.
+            // Valor pedido por el enunciado
             item.valor = static_cast<int>(round(solicitud.monthlyCharges * 10.0));
             items.push_back(item);
 
-            // Nos detenemos al llegar a las primeras 50 activas.
+            // Nos detenemos al llegar a las primeras 50 activas
             if (static_cast<int>(items.size()) == maxItems) {
                 break;
             }
@@ -220,44 +220,44 @@ vector<ItemBW> construirItemsActivos(const vector<Solicitud>& solicitudesOrdenad
 
 ResultadoMochila resolverMochila01(const vector<ItemBW>& items, int capacidad) {
     int n = static_cast<int>(items.size());
-    // Tabla dp: filas = items vistos, columnas = capacidad usada.
+    // Tabla dp: filas = items vistos, columnas = capacidad usada
     vector<vector<int>> dp(n + 1, vector<int>(capacidad + 1, 0));
 
     for (int i = 1; i <= n; ++i) {
-        // Item actual: en dp usamos i, en vector usamos i - 1.
+        // Item actual: en dp usamos i, en vector usamos i - 1
         int peso = items[i - 1].peso;
         int valor = items[i - 1].valor;
 
         for (int w = 0; w <= capacidad; ++w) {
-            // Si no cabe, copiamos la fila de arriba.
+            // Si no cabe, copiamos la fila de arriba
             if (peso > w) {
                 dp[i][w] = dp[i - 1][w];
             } else {
-                // Si cabe, elegimos entre no tomarlo o tomarlo.
+                // Si cabe, elegimos entre no tomarlo o tomarlo
                 dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - peso] + valor);
             }
         }
     }
 
     vector<ItemBW> seleccionados;
-    // Empezamos a volver desde la esquina final.
+    // Empezamos a volver desde la esquina final
     int w = capacidad;
     for (int i = n; i > 0; --i) {
         const ItemBW& item = items[i - 1];
-        // Si el valor cambio, este item fue usado.
+        // Si el valor cambio, este item fue usado
         if (item.peso <= w &&
             dp[i][w] != dp[i - 1][w] &&
             dp[i][w] == dp[i - 1][w - item.peso] + item.valor) {
             seleccionados.push_back(item);
-            // Restamos su peso para seguir el camino.
+            // Restamos su peso para seguir el camino
             w -= item.peso;
         }
     }
-    // El backtracking sale al reves, asi que lo acomodamos.
+    // El backtracking sale al reves, asi que lo acomodamos
     reverse(seleccionados.begin(), seleccionados.end());
 
     ResultadoMochila resultado;
-    // La respuesta optima esta en la ultima celda.
+    // La respuesta optima esta en la ultima celda
     resultado.valorOptimo = dp[n][capacidad];
     resultado.seleccionados = seleccionados;
     resultado.dp = dp;
@@ -267,7 +267,7 @@ ResultadoMochila resolverMochila01(const vector<ItemBW>& items, int capacidad) {
 ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
                                                     int capacidad) {
     ContraejemploCodicioso contraejemplo;
-    // Arrancamos diciendo que todavia no encontramos fallo.
+    // Arrancamos diciendo que todavia no encontramos fallo
     contraejemplo.encontrado = false;
     contraejemplo.triosEvaluados = 0;
     contraejemplo.valorCodicioso = 0;
@@ -280,20 +280,20 @@ ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             for (int k = j + 1; k < n; ++k) {
-                // Probamos cada combinacion de 3 items.
+                // Probamos cada combinacion de 3 items
                 ++contraejemplo.triosEvaluados;
                 vector<ItemBW> trio = {items[i], items[j], items[k]};
 
                 int valorCodicioso = 0;
-                // Primero corremos el metodo por ratio.
+                // Primero corremos el metodo por ratio
                 vector<ItemBW> seleccionCodiciosa =
                     resolverCodiciosoRatio(trio, capacidad, valorCodicioso);
 
-                // Luego corremos DP para saber el verdadero optimo.
+                // Luego corremos DP para saber el verdadero optimo
                 ResultadoMochila optimo = resolverMochila01(trio, capacidad);
                 int diferencia = optimo.valorOptimo - valorCodicioso;
 
-                // Guardamos el mejor intento, aunque no sea contraejemplo.
+                // Guardamos el mejor intento, aunque no sea contraejemplo
                 if (contraejemplo.mejorTrio.empty() ||
                     diferencia > contraejemplo.mejorDiferencia ||
                     (diferencia == contraejemplo.mejorDiferencia &&
@@ -306,7 +306,7 @@ ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
                     contraejemplo.mejorDiferencia = diferencia;
                 }
 
-                // Si DP gana, este es el contraejemplo que buscamos.
+                // Si DP gana, este es el contraejemplo que buscamos
                 if (valorCodicioso < optimo.valorOptimo) {
                     contraejemplo.encontrado = true;
                     contraejemplo.trio = trio;
