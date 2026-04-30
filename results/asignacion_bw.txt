@@ -1,0 +1,156 @@
+﻿Modulo C - Asignacion de ancho de banda
+========================================
+
+Capacidad W: 500
+Numero de solicitudes consideradas: 50
+Verificacion de entrada:
+- Vector recibido desde Modulo A ordenado por tenure descendente: OK
+- Filtro aplicado: Churn == "No" (campo churn == false).
+- Peso usado: round(TotalCharges) sobre Solicitud.totalCharges parseado como double.
+- Valor usado: round(MonthlyCharges * 10).
+
+Solicitudes consideradas antes de la DP
+customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
+2234-XADUH,72,103.20,7362.90,7363,1032
+2569-WGERO,72,21.15,1419.40,1419,212
+7203-OYKCT,72,104.95,7544.30,7544,1050
+2274-XUATA,72,63.10,4685.55,4686,631
+8468-FZTOE,72,74.35,5237.40,5237,744
+2314-TNDJQ,72,55.65,3880.05,3880,557
+2904-GGUAZ,72,84.05,6052.25,6052,841
+1304-SEGFY,72,97.85,6841.30,6841,979
+6976-BWGLQ,72,25.20,1787.35,1787,252
+4707-MAXGU,72,25.85,1872.20,1872,259
+0270-THENM,72,69.85,5102.35,5102,699
+1320-GVNHT,72,108.40,7767.25,7767,1084
+5893-KCLGT,72,19.75,1567.00,1567,198
+9739-JLPQJ,72,117.50,8670.10,8670,1175
+2380-DAMQP,72,115.15,8349.70,8350,1152
+2509-TFPJU,72,25.75,1864.20,1864,258
+2452-MRMZF,72,25.70,1937.40,1937,257
+8107-RZLNV,72,106.30,7565.35,7565,1063
+4670-TABXH,72,109.75,7758.90,7759,1098
+3704-IEAXF,72,53.65,3784.00,3784,537
+3967-KXAPS,72,92.30,6719.90,6720,923
+6437-UDQJM,72,84.10,6129.65,6130,841
+4909-JOUPP,72,109.70,7898.45,7898,1097
+3938-YFPXD,72,84.30,5997.10,5997,843
+6166-YIPFO,72,64.70,4746.05,4746,647
+3518-FSTWG,72,109.55,7920.70,7921,1096
+0480-KYJVA,72,24.25,1784.50,1785,243
+6519-ZHPXP,72,108.30,7679.65,7680,1083
+3258-ZKPAI,72,116.60,8337.45,8337,1166
+7921-BEPCI,72,59.75,4265.00,4265,598
+6656-GULJQ,72,83.55,6093.30,6093,836
+1293-BSEUN,72,20.70,1482.30,1482,207
+1027-LKKQQ,72,80.45,5886.85,5887,805
+3544-FBCAS,72,83.60,5959.30,5959,836
+8265-HKSOW,72,107.45,7658.30,7658,1075
+0665-XHDJU,72,99.40,7285.70,7286,994
+6631-HMANX,72,85.45,6227.50,6228,855
+1452-UZOSF,72,106.10,7548.60,7549,1061
+4718-WXBGI,72,91.95,6614.90,6615,920
+2925-VDZHY,72,88.70,6501.35,6501,887
+8901-UPRHR,72,109.20,7711.45,7711,1092
+9924-JPRMC,72,118.20,8547.15,8547,1182
+3831-YCPUO,72,109.50,7854.90,7855,1095
+9114-DPSIA,72,81.00,5750.00,5750,810
+4024-CSNBY,72,94.25,6849.75,6850,943
+0401-WDBXM,72,105.55,7542.25,7542,1056
+2193-SFWQW,72,111.95,8033.10,8033,1120
+7169-YWAMK,72,68.40,4855.35,4855,684
+8398-TBIYD,72,84.70,6185.15,6185,847
+5965-GGPRW,72,105.25,7609.75,7610,1053
+
+Cantidad de solicitudes consideradas con peso <= 500: 0
+Diagnostico: todas las 50 solicitudes consideradas tienen peso > 500. Con W = 500, ninguna solicitud puede entrar en la mochila; el enunciado produce una instancia degenerada para estos datos y formulas.
+
+Resultado DP Mochila 0-1
+------------------------
+Valor optimo total: 0
+Numero de solicitudes seleccionadas: 0
+
+Solicitudes seleccionadas por PD Mochila 0-1
+customerID,peso,valor
+(ninguna)
+
+Contraejemplo codicioso por ratio v/w
+-------------------------------------
+Trios evaluados: 19600
+No se encontro un trio de solicitudes, dentro del conjunto de 50, donde el codicioso por ratio v/w tenga menor valor que la PD Mochila 0-1 con W = 500.
+Razon: ninguna de las 50 solicitudes cabe individualmente con W = 500; por eso, en todos los trios tanto el codicioso como la DP seleccionan el conjunto vacio con valor 0.
+
+Mejor intento encontrado:
+Diferencia PD - codicioso: 0
+customerID           peso     valor         ratio
+-------------------------------------------------
+2234-XADUH           7363      1032        0.1402
+2569-WGERO           1419       212        0.1494
+7203-OYKCT           7544      1050        0.1392
+
+Comparacion del mejor intento:
+Enfoque                 Solicitudes seleccionadas                          Valor total      Optimo
+--------------------------------------------------------------------------------------------------
+Codicioso ratio v/w     (ninguna)                                                    0          Si
+PD Mochila 0-1          (ninguna)                                                    0          Si
+
+Analisis de complejidad
+-----------------------
+Tiempo: Theta(n * W), porque se llena una tabla con n + 1 filas y W + 1 columnas.
+Espacio: Theta(n * W), porque la tabla dp completa se mantiene para reconstruir la solucion con backtracking.
+El algoritmo es pseudopolinomial: su costo depende del valor numerico de W, no solo de la cantidad de bits necesarios para representar W en la entrada.
+
+Observacion sobre consistencia del enunciado
+--------------------------------------------
+El Modulo C siguio literalmente la formula indicada en el enunciado: peso = round(TotalCharges), valor = round(MonthlyCharges * 10), y capacidad W = 500.
+Las 50 solicitudes consideradas corresponden a las primeras solicitudes activas (Churn == No) del arreglo ordenado por tenure descendente; en esta instancia todas tienen tenure = 72.
+Como 0 de las 50 solicitudes tienen peso <= 500, ninguna cabe en la mochila. Por eso la programacion dinamica devuelve valor optimo 0 y selecciona 0 solicitudes.
+Por la misma razon, no puede construirse un contraejemplo codicioso valido dentro de esas 50 solicitudes con W = 500: tanto el codicioso por ratio v/w como la DP eligen el conjunto vacio en cada trio evaluado.
+No se modifico W ni la formula de peso, porque hacerlo cambiaria las reglas originales del enunciado.
+Para obtener una instancia no degenerada, el enunciado tendria que ajustar alguna condicion: aumentar W, escalar TotalCharges, usar MonthlyCharges como peso, o seleccionar solicitudes con menor tenure. Esas alternativas no se usaron en esta entrega porque alterarian las reglas originales.
+
+Experimento ajustado para demostrar PD vs codicioso
+---------------------------------------------------
+Esta seccion no reemplaza la interpretacion literal del enunciado; la complementa para observar una instancia no degenerada. Se mantiene W = 500 y valor = round(MonthlyCharges * 10), pero se usa peso_ajustado = round(TotalCharges / 100.0).
+La solucion literal anterior da 0 porque ningun item cabe con peso = round(TotalCharges). Este experimento escala el peso solo para demostrar el comportamiento esperado de programacion dinamica frente al enfoque codicioso.
+
+Cantidad de solicitudes con peso_ajustado <= 500: 50
+Valor optimo ajustado: 7108
+Numero de solicitudes seleccionadas: 9
+Solicitudes seleccionadas con pesos ajustados:
+customerID,peso_ajustado,valor
+2569-WGERO,14,212
+8468-FZTOE,52,744
+2314-TNDJQ,39,557
+1304-SEGFY,68,979
+3704-IEAXF,38,537
+3938-YFPXD,60,843
+6519-ZHPXP,77,1083
+1452-UZOSF,75,1061
+8901-UPRHR,77,1092
+
+Comparacion global ajustada con las 50 solicitudes
+Enfoque                 Solicitudes seleccionadas                          Valor total      Optimo
+--------------------------------------------------------------------------------------------------
+Codicioso ratio v/w     2569-WGERO, 1304-SEGFY, 8468-FZTOE, 2314-TNDJQ, 8901-UPRHR, 1452-UZOSF, 3704-IEAXF, 0401-WDBXM, 3938-YFPXD          7081          No
+PD Mochila 0-1          2569-WGERO, 8468-FZTOE, 2314-TNDJQ, 1304-SEGFY, 3704-IEAXF, 3938-YFPXD, 6519-ZHPXP, 1452-UZOSF, 8901-UPRHR          7108          Si
+En la instancia ajustada completa, la DP obtiene mayor valor que el codicioso por ratio v/w.
+
+Contraejemplo codicioso con pesos ajustados
+Trios evaluados: 19600
+No se encontro un trio donde la DP supere al codicioso bajo las restricciones solicitadas para el experimento ajustado.
+Razon: con peso_ajustado = round(TotalCharges / 100.0), el peso maximo total de cualquier trio evaluado es 255, que no supera W = 500. Por lo tanto, para cualquier trio el codicioso puede tomar las tres solicitudes y coincide con la solucion optima de la DP.
+
+Mejor intento encontrado con pesos ajustados:
+Diferencia PD - codicioso: 0
+customerID           peso     valor         ratio
+-------------------------------------------------
+9739-JLPQJ             87      1175       13.5057
+3258-ZKPAI             83      1166       14.0482
+9924-JPRMC             85      1182       13.9059
+
+Comparacion del mejor intento ajustado:
+Enfoque                 Solicitudes seleccionadas                          Valor total      Optimo
+--------------------------------------------------------------------------------------------------
+Codicioso ratio v/w     3258-ZKPAI, 9924-JPRMC, 9739-JLPQJ                        3523          Si
+PD Mochila 0-1          9739-JLPQJ, 3258-ZKPAI, 9924-JPRMC                        3523          Si
