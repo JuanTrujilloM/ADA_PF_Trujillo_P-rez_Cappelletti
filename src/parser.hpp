@@ -4,6 +4,7 @@
 
 using namespace std;
 
+// Represents a customer request (solicitud) with relevant fields.
 struct Solicitud {
     string customerID;
     int tenure;
