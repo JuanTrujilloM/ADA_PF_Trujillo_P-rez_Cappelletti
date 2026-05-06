@@ -1,0 +1,58 @@
+============================================================
+  MODULO B - Red de minimo costo (Kruskal)
+============================================================
+
+--- Estadisticas del grafo ---
+Numero de nodos:           20
+Numero de aristas:         190
+Costo promedio de arista:  129.04
+
+--- Promedios MonthlyCharges por grupo ---
+  Grupo  0: 63.61
+  Grupo  1: 63.94
+  Grupo  2: 64.37
+  Grupo  3: 63.25
+  Grupo  4: 63.63
+  Grupo  5: 61.11
+  Grupo  6: 66.53
+  Grupo  7: 65.93
+  Grupo  8: 68.07
+  Grupo  9: 64.57
+  Grupo 10: 61.93
+  Grupo 11: 64.16
+  Grupo 12: 65.47
+  Grupo 13: 65.40
+  Grupo 14: 64.02
+  Grupo 15: 64.98
+  Grupo 16: 65.94
+  Grupo 17: 65.83
+  Grupo 18: 67.00
+  Grupo 19: 65.51
+
+--- Arbol de expansion minima (MST) ---
+Aristas del MST (19 aristas):
+  Nodo u  Nodo v     Costo
+  --------------------------------
+       5      10       123
+       0       5       124
+       3       5       124
+       4       5       124
+       2       5       125
+      10      14       125
+       1      10       125
+       5      11       125
+       5       9       125
+       5      19       126
+       5      17       126
+       5      12       126
+      10      15       126
+       5      13       126
+       5      16       127
+       5       6       127
+       5       7       127
+       5      18       128
+       5       8       129
+
+Peso total del MST: 2388
+
+============================================================

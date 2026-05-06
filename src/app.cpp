@@ -5,6 +5,7 @@
 #include "parser.hpp"
 #include "mergesort.hpp"
 #include "binary_search.hpp"
+#include "kruskal.hpp"
 #include "knapsack.hpp"
 
 using namespace std;
@@ -52,6 +53,18 @@ int main(int argc, char* argv[]) {
     }
     csvOut.close();
     cout << "File generated: results/solicitudes_ordenadas.csv\n";
+
+    // Module B
+    vector<double> groupAvg;
+    vector<Edge> edges = buildGraph(requests, groupAvg);
+    MSTResult mst = kruskal(20, edges);
+    writeMSTReport("results/mst_red.txt", edges, groupAvg, mst);
+
+    cout << "\n";
+    cout << "MODULE B\n";
+    cout << "Graph: 20 nodes, " << edges.size() << " edges\n";
+    cout << "MST total weight: " << mst.totalWeight << "\n";
+    cout << "File generated: results/mst_red.txt\n";
 
     // Module C
     generarReporteAsignacionBW(requests);
