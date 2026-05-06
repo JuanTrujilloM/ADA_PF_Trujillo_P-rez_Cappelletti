@@ -37,6 +37,7 @@ customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
 3938-YFPXD,72,84.30,5997.10,5997,843
 6166-YIPFO,72,64.70,4746.05,4746,647
 3518-FSTWG,72,109.55,7920.70,7921,1096
+6034-ZRYCV,72,54.20,3937.45,3937,542
 0480-KYJVA,72,24.25,1784.50,1785,243
 6519-ZHPXP,72,108.30,7679.65,7680,1083
 3258-ZKPAI,72,116.60,8337.45,8337,1166
@@ -60,7 +61,6 @@ customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
 2193-SFWQW,72,111.95,8033.10,8033,1120
 7169-YWAMK,72,68.40,4855.35,4855,684
 8398-TBIYD,72,84.70,6185.15,6185,847
-5965-GGPRW,72,105.25,7609.75,7610,1053
 
 Cantidad de solicitudes consideradas con peso <= 500: 0
 Diagnostico: todas las 50 solicitudes consideradas tienen peso > 500. Con W = 500, ninguna solicitud puede entrar en la mochila; el enunciado produce una instancia degenerada para estos datos y formulas.

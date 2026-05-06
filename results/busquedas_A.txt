@@ -1,7 +1,7 @@
 Binary search results
 
-Q_A01 | k=72 | customerID=5248-YGIJN
-Q_A02 | k=60 | customerID=4667-QONEA
-Q_A03 | k=45 | customerID=7795-CFOCW
-Q_A04 | k=30 | customerID=6865-JZNKO
-Q_A05 | k=12 | customerID=1680-VDCWW
+Q_A01 | k=72 | customerID=3133-PZNSR
+Q_A02 | k=60 | customerID=3154-HMWUU
+Q_A03 | k=45 | customerID=7925-PNRGI
+Q_A04 | k=30 | customerID=6754-WKSHP
+Q_A05 | k=12 | customerID=6625-UTXEW
