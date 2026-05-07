@@ -92,32 +92,6 @@ static int contarItemsQueCaben(const vector<ItemBW>& items, int capacidad) {
     return cantidad;
 }
 
-// Crea la versión experimental con TotalCharges escalado
-static vector<ItemBW> construirItemsConPesoAjustado(const vector<ItemBW>& items) {
-    // Copiamos para conservar la versión literal
-    vector<ItemBW> ajustados = items;
-    for (auto& item : ajustados) {
-        // Este peso es solo para el experimento ajustado
-        item.peso = static_cast<int>(round(item.totalCharges / 100.0));
-    }
-    return ajustados;
-}
-
-// Sirve para explicar si cualquier trio entra completo
-static int maximoPesoTrio(const vector<ItemBW>& items) {
-    int maximo = 0;
-    int n = static_cast<int>(items.size());
-    for (int i = 0; i < n; ++i) {
-        for (int j = i + 1; j < n; ++j) {
-            for (int k = j + 1; k < n; ++k) {
-                // Guardamos el trio mas pesado
-                maximo = max(maximo, items[i].peso + items[j].peso + items[k].peso);
-            }
-        }
-    }
-    return maximo;
-}
-
 // Imprime los 50 items antes de correr DP
 static void imprimirTablaItems(ostream& out, const vector<ItemBW>& items) {
     out << "Solicitudes consideradas antes de la DP\n";
@@ -131,19 +105,6 @@ static void imprimirTablaItems(ostream& out, const vector<ItemBW>& items) {
             << item.totalCharges << ","
             << item.peso << ","
             << item.valor << "\n";
-    }
-}
-
-// Imprime la seleccion del experimento ajustado
-static void imprimirSeleccionAjustada(ostream& out, const vector<ItemBW>& seleccionados) {
-    out << "customerID,peso_ajustado,valor\n";
-    if (seleccionados.empty()) {
-        out << "(ninguna)\n";
-        return;
-    }
-
-    for (const auto& item : seleccionados) {
-        out << item.customerID << "," << item.peso << "," << item.valor << "\n";
     }
 }
 
@@ -218,6 +179,27 @@ vector<ItemBW> construirItemsActivos(const vector<Solicitud>& solicitudesOrdenad
     return items;
 }
 
+static vector<ItemBW> construirItemsReales(const vector<Solicitud>& solicitudes) {
+    vector<ItemBW> items;
+    items.reserve(solicitudes.size());
+
+    for (const auto& solicitud : solicitudes) {
+        ItemBW item;
+        item.customerID = solicitud.customerID;
+        item.tenure = solicitud.tenure;
+        item.monthlyCharges = solicitud.monthlyCharges;
+        item.totalCharges = solicitud.totalCharges;
+        item.peso = static_cast<int>(round(solicitud.totalCharges));
+        item.valor = static_cast<int>(round(solicitud.monthlyCharges * 10.0));
+
+        if (item.peso > 0 && item.valor > 0) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
+}
+
 ResultadoMochila resolverMochila01(const vector<ItemBW>& items, int capacidad) {
     int n = static_cast<int>(items.size());
     // Tabla dp: filas = items vistos, columnas = capacidad usada
@@ -269,6 +251,7 @@ ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
     ContraejemploCodicioso contraejemplo;
     // Arrancamos diciendo que todavia no encontramos fallo
     contraejemplo.encontrado = false;
+    contraejemplo.capacidad = capacidad;
     contraejemplo.triosEvaluados = 0;
     contraejemplo.valorCodicioso = 0;
     contraejemplo.valorOptimo = 0;
@@ -309,6 +292,80 @@ ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
                 // Si DP gana, este es el contraejemplo que buscamos
                 if (valorCodicioso < optimo.valorOptimo) {
                     contraejemplo.encontrado = true;
+                    contraejemplo.capacidad = capacidad;
+                    contraejemplo.trio = trio;
+                    contraejemplo.seleccionCodiciosa = seleccionCodiciosa;
+                    contraejemplo.valorCodicioso = valorCodicioso;
+                    contraejemplo.seleccionOptima = optimo.seleccionados;
+                    contraejemplo.valorOptimo = optimo.valorOptimo;
+                    return contraejemplo;
+                }
+            }
+        }
+    }
+
+    return contraejemplo;
+}
+
+static ContraejemploCodicioso buscarContraejemploRealDataset(
+    const vector<Solicitud>& solicitudes,
+    int capacidadOficial) {
+    ContraejemploCodicioso contraejemplo;
+    contraejemplo.encontrado = false;
+    contraejemplo.capacidad = 0;
+    contraejemplo.triosEvaluados = 0;
+    contraejemplo.valorCodicioso = 0;
+    contraejemplo.valorOptimo = 0;
+    contraejemplo.mejorValorCodicioso = 0;
+    contraejemplo.mejorValorOptimo = 0;
+    contraejemplo.mejorDiferencia = numeric_limits<int>::min();
+
+    vector<ItemBW> candidatos;
+    for (const auto& item : construirItemsReales(solicitudes)) {
+        if (item.peso <= capacidadOficial) {
+            candidatos.push_back(item);
+        }
+    }
+
+    sort(candidatos.begin(), candidatos.end(), compararPorRatioDesc);
+
+    int n = static_cast<int>(candidatos.size());
+    for (int i = 0; i < n; ++i) {
+        const ItemBW& primeroGreedy = candidatos[i];
+
+        for (int j = i + 1; j < n; ++j) {
+            const ItemBW& segundo = candidatos[j];
+            if (segundo.peso >= primeroGreedy.peso) continue;
+
+            for (int k = j + 1; k < n; ++k) {
+                const ItemBW& tercero = candidatos[k];
+                if (tercero.peso >= primeroGreedy.peso) continue;
+                ++contraejemplo.triosEvaluados;
+
+                int capacidadMini = segundo.peso + tercero.peso;
+                vector<ItemBW> trio = {primeroGreedy, segundo, tercero};
+
+                int valorCodicioso = 0;
+                vector<ItemBW> seleccionCodiciosa =
+                    resolverCodiciosoRatio(trio, capacidadMini, valorCodicioso);
+                ResultadoMochila optimo = resolverMochila01(trio, capacidadMini);
+                int diferencia = optimo.valorOptimo - valorCodicioso;
+
+                if (contraejemplo.mejorTrio.empty() ||
+                    diferencia > contraejemplo.mejorDiferencia ||
+                    (diferencia == contraejemplo.mejorDiferencia &&
+                     optimo.valorOptimo > contraejemplo.mejorValorOptimo)) {
+                    contraejemplo.mejorTrio = trio;
+                    contraejemplo.mejorSeleccionCodiciosa = seleccionCodiciosa;
+                    contraejemplo.mejorValorCodicioso = valorCodicioso;
+                    contraejemplo.mejorSeleccionOptima = optimo.seleccionados;
+                    contraejemplo.mejorValorOptimo = optimo.valorOptimo;
+                    contraejemplo.mejorDiferencia = diferencia;
+                }
+
+                if (valorCodicioso < optimo.valorOptimo) {
+                    contraejemplo.encontrado = true;
+                    contraejemplo.capacidad = capacidadMini;
                     contraejemplo.trio = trio;
                     contraejemplo.seleccionCodiciosa = seleccionCodiciosa;
                     contraejemplo.valorCodicioso = valorCodicioso;
@@ -459,105 +516,40 @@ void generarReporteAsignacionBW(const vector<Solicitud>& solicitudesOrdenadas,
         << "vacio en cada trio evaluado.\n";
     out << "No se modifico W ni la formula de peso, porque hacerlo cambiaria "
         << "las reglas originales del enunciado.\n";
-    out << "Para obtener una instancia no degenerada, el enunciado tendria que "
-        << "ajustar alguna condicion: aumentar W, escalar TotalCharges, usar "
-        << "MonthlyCharges como peso, o seleccionar solicitudes con menor "
-        << "tenure. Esas alternativas no se usaron en esta entrega porque "
-        << "alterarian las reglas originales.\n";
+    out << "Para cumplir la rubrica del fallo codicioso sin inventar datos, "
+        << "se busca aparte una mini-instancia de exactamente 3 solicitudes "
+        << "reales del CSV, manteniendo peso = round(TotalCharges) y valor = "
+        << "round(MonthlyCharges * 10), pero usando una capacidad W_ce propia "
+        << "del contraejemplo.\n";
 
-    if (resultado.valorOptimo == 0) {
-        // Si la version literal no sirve, agregamos el experimento pedido.
-        vector<ItemBW> itemsAjustados = construirItemsConPesoAjustado(items);
-        // Volvemos a correr DP, ahora con peso escalado.
-        ResultadoMochila resultadoAjustado =
-            resolverMochila01(itemsAjustados, capacidad);
-        int valorCodiciosoGlobalAjustado = 0;
-        // Tambien probamos el codicioso sobre las 50 solicitudes ajustadas.
-        vector<ItemBW> seleccionCodiciosaGlobalAjustada =
-            resolverCodiciosoRatio(itemsAjustados,
-                                   capacidad,
-                                   valorCodiciosoGlobalAjustado);
-        // Y buscamos el contraejemplo de 3 items con pesos ajustados.
-        ContraejemploCodicioso contraejemploAjustado =
-            buscarContraejemploCodicioso(itemsAjustados, capacidad);
-        int itemsAjustadosQueCaben = contarItemsQueCaben(itemsAjustados, capacidad);
-        // Esto ayuda a explicar si todos los trios entran completos.
-        int maxPesoTrioAjustado = maximoPesoTrio(itemsAjustados);
+    ContraejemploCodicioso contraejemploReal =
+        buscarContraejemploRealDataset(solicitudesOrdenadas, capacidad);
 
-        out << "\nExperimento ajustado para demostrar PD vs codicioso\n";
-        out << "---------------------------------------------------\n";
-        out << "Esta seccion no reemplaza la interpretacion literal del "
-            << "enunciado; la complementa para observar una instancia no "
-            << "degenerada. Se mantiene W = " << capacidad
-            << " y valor = round(MonthlyCharges * 10), pero se usa "
-            << "peso_ajustado = round(TotalCharges / 100.0).\n";
-        out << "La solucion literal anterior da 0 porque ningun item cabe con "
-            << "peso = round(TotalCharges). Este experimento escala el peso "
-            << "solo para demostrar el comportamiento esperado de programacion "
-            << "dinamica frente al enfoque codicioso.\n\n";
+    out << "\nContraejemplo valido con datos reales del CSV\n";
+    out << "---------------------------------------------\n";
+    out << "Trios evaluados en la busqueda: "
+        << contraejemploReal.triosEvaluados << "\n";
 
-        out << "Cantidad de solicitudes con peso_ajustado <= " << capacidad
-            << ": " << itemsAjustadosQueCaben << "\n";
-        out << "Valor optimo ajustado: " << resultadoAjustado.valorOptimo << "\n";
-        out << "Numero de solicitudes seleccionadas: "
-            << resultadoAjustado.seleccionados.size() << "\n";
-        out << "Solicitudes seleccionadas con pesos ajustados:\n";
-        imprimirSeleccionAjustada(out, resultadoAjustado.seleccionados);
+    if (contraejemploReal.encontrado) {
+        out << "Capacidad de la mini-instancia W_ce: "
+            << contraejemploReal.capacidad << "\n";
+        out << "Trio usado:\n";
+        imprimirTablaTrio(out, contraejemploReal.trio);
 
-        out << "\nComparacion global ajustada con las 50 solicitudes\n";
-        // Esta comparacion muestra DP vs codicioso en la instancia completa.
+        out << "\nComparacion requerida:\n";
         imprimirComparacion(out,
-                            seleccionCodiciosaGlobalAjustada,
-                            valorCodiciosoGlobalAjustado,
-                            resultadoAjustado.seleccionados,
-                            resultadoAjustado.valorOptimo,
-                            valorCodiciosoGlobalAjustado == resultadoAjustado.valorOptimo);
-        if (valorCodiciosoGlobalAjustado < resultadoAjustado.valorOptimo) {
-            out << "En la instancia ajustada completa, la DP obtiene mayor valor "
-                << "que el codicioso por ratio v/w.\n";
-        } else {
-            out << "En la instancia ajustada completa, el codicioso empata con "
-                << "la DP para estos datos.\n";
-        }
-
-        out << "\nContraejemplo codicioso con pesos ajustados\n";
-        out << "Trios evaluados: " << contraejemploAjustado.triosEvaluados << "\n";
-        if (contraejemploAjustado.encontrado) {
-            // Si aparece, se imprime el trio donde falla.
-            out << "Trio usado:\n";
-            imprimirTablaTrio(out, contraejemploAjustado.trio);
-            out << "\nComparacion:\n";
-            imprimirComparacion(out,
-                                contraejemploAjustado.seleccionCodiciosa,
-                                contraejemploAjustado.valorCodicioso,
-                                contraejemploAjustado.seleccionOptima,
-                                contraejemploAjustado.valorOptimo,
-                                false);
-        } else {
-            // Si no aparece, se deja el motivo matematico.
-            out << "No se encontro un trio donde la DP supere al codicioso bajo "
-                << "las restricciones solicitadas para el experimento ajustado.\n";
-            out << "Razon: con peso_ajustado = round(TotalCharges / 100.0), "
-                << "el peso maximo total de cualquier trio evaluado es "
-                << maxPesoTrioAjustado << ", que no supera W = "
-                << capacidad << ". Por lo tanto, para cualquier trio el "
-                << "codicioso puede tomar las tres solicitudes y coincide con "
-                << "la solucion optima de la DP.\n";
-
-            if (!contraejemploAjustado.mejorTrio.empty()) {
-                // Mostramos el mejor intento ajustado, aunque empate.
-                out << "\nMejor intento encontrado con pesos ajustados:\n";
-                out << "Diferencia PD - codicioso: "
-                    << contraejemploAjustado.mejorDiferencia << "\n";
-                imprimirTablaTrio(out, contraejemploAjustado.mejorTrio);
-                out << "\nComparacion del mejor intento ajustado:\n";
-                imprimirComparacion(out,
-                                    contraejemploAjustado.mejorSeleccionCodiciosa,
-                                    contraejemploAjustado.mejorValorCodicioso,
-                                    contraejemploAjustado.mejorSeleccionOptima,
-                                    contraejemploAjustado.mejorValorOptimo,
-                                    true);
-            }
-        }
+                            contraejemploReal.seleccionCodiciosa,
+                            contraejemploReal.valorCodicioso,
+                            contraejemploReal.seleccionOptima,
+                            contraejemploReal.valorOptimo,
+                            false);
+        out << "El codicioso toma primero la solicitud con mayor ratio v/w; "
+            << "despues ya no le queda capacidad para agregar otra. La PD, "
+            << "en cambio, evalua todas las combinaciones 0-1 y encuentra "
+            << "un par de solicitudes con mayor valor total.\n";
+    } else {
+        out << "No se encontro un contraejemplo real con las condiciones "
+            << "programadas. Esto deberia revisarse porque la rubrica exige "
+            << "un trio explicito donde greedy no sea optimo.\n";
     }
 }

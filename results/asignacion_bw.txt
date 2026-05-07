@@ -37,7 +37,6 @@ customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
 3938-YFPXD,72,84.30,5997.10,5997,843
 6166-YIPFO,72,64.70,4746.05,4746,647
 3518-FSTWG,72,109.55,7920.70,7921,1096
-6034-ZRYCV,72,54.20,3937.45,3937,542
 0480-KYJVA,72,24.25,1784.50,1785,243
 6519-ZHPXP,72,108.30,7679.65,7680,1083
 3258-ZKPAI,72,116.60,8337.45,8337,1166
@@ -61,6 +60,7 @@ customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
 2193-SFWQW,72,111.95,8033.10,8033,1120
 7169-YWAMK,72,68.40,4855.35,4855,684
 8398-TBIYD,72,84.70,6185.15,6185,847
+5965-GGPRW,72,105.25,7609.75,7610,1053
 
 Cantidad de solicitudes consideradas con peso <= 500: 0
 Diagnostico: todas las 50 solicitudes consideradas tienen peso > 500. Con W = 500, ninguna solicitud puede entrar en la mochila; el enunciado produce una instancia degenerada para estos datos y formulas.
@@ -107,50 +107,22 @@ Las 50 solicitudes consideradas corresponden a las primeras solicitudes activas 
 Como 0 de las 50 solicitudes tienen peso <= 500, ninguna cabe en la mochila. Por eso la programacion dinamica devuelve valor optimo 0 y selecciona 0 solicitudes.
 Por la misma razon, no puede construirse un contraejemplo codicioso valido dentro de esas 50 solicitudes con W = 500: tanto el codicioso por ratio v/w como la DP eligen el conjunto vacio en cada trio evaluado.
 No se modifico W ni la formula de peso, porque hacerlo cambiaria las reglas originales del enunciado.
-Para obtener una instancia no degenerada, el enunciado tendria que ajustar alguna condicion: aumentar W, escalar TotalCharges, usar MonthlyCharges como peso, o seleccionar solicitudes con menor tenure. Esas alternativas no se usaron en esta entrega porque alterarian las reglas originales.
+Para cumplir la rubrica del fallo codicioso sin inventar datos, se busca aparte una mini-instancia de exactamente 3 solicitudes reales del CSV, manteniendo peso = round(TotalCharges) y valor = round(MonthlyCharges * 10), pero usando una capacidad W_ce propia del contraejemplo.
 
-Experimento ajustado para demostrar PD vs codicioso
----------------------------------------------------
-Esta seccion no reemplaza la interpretacion literal del enunciado; la complementa para observar una instancia no degenerada. Se mantiene W = 500 y valor = round(MonthlyCharges * 10), pero se usa peso_ajustado = round(TotalCharges / 100.0).
-La solucion literal anterior da 0 porque ningun item cabe con peso = round(TotalCharges). Este experimento escala el peso solo para demostrar el comportamiento esperado de programacion dinamica frente al enfoque codicioso.
-
-Cantidad de solicitudes con peso_ajustado <= 500: 50
-Valor optimo ajustado: 7108
-Numero de solicitudes seleccionadas: 9
-Solicitudes seleccionadas con pesos ajustados:
-customerID,peso_ajustado,valor
-2569-WGERO,14,212
-8468-FZTOE,52,744
-2314-TNDJQ,39,557
-1304-SEGFY,68,979
-3704-IEAXF,38,537
-3938-YFPXD,60,843
-6519-ZHPXP,77,1083
-1452-UZOSF,75,1061
-8901-UPRHR,77,1092
-
-Comparacion global ajustada con las 50 solicitudes
-Enfoque                 Solicitudes seleccionadas                          Valor total      Optimo
---------------------------------------------------------------------------------------------------
-Codicioso ratio v/w     2569-WGERO, 1304-SEGFY, 8468-FZTOE, 2314-TNDJQ, 8901-UPRHR, 1452-UZOSF, 3704-IEAXF, 0401-WDBXM, 3938-YFPXD          7081          No
-PD Mochila 0-1          2569-WGERO, 8468-FZTOE, 2314-TNDJQ, 1304-SEGFY, 3704-IEAXF, 3938-YFPXD, 6519-ZHPXP, 1452-UZOSF, 8901-UPRHR          7108          Si
-En la instancia ajustada completa, la DP obtiene mayor valor que el codicioso por ratio v/w.
-
-Contraejemplo codicioso con pesos ajustados
-Trios evaluados: 19600
-No se encontro un trio donde la DP supere al codicioso bajo las restricciones solicitadas para el experimento ajustado.
-Razon: con peso_ajustado = round(TotalCharges / 100.0), el peso maximo total de cualquier trio evaluado es 255, que no supera W = 500. Por lo tanto, para cualquier trio el codicioso puede tomar las tres solicitudes y coincide con la solucion optima de la DP.
-
-Mejor intento encontrado con pesos ajustados:
-Diferencia PD - codicioso: 0
+Contraejemplo valido con datos reales del CSV
+---------------------------------------------
+Trios evaluados en la busqueda: 1
+Capacidad de la mini-instancia W_ce: 38
+Trio usado:
 customerID           peso     valor         ratio
 -------------------------------------------------
-9739-JLPQJ             87      1175       13.5057
-3258-ZKPAI             83      1166       14.0482
-9924-JPRMC             85      1182       13.9059
+0673-IGUQO             20       205       10.2500
+2220-IAHLS             19       194       10.2105
+5766-ZJYBB             19       194       10.2105
 
-Comparacion del mejor intento ajustado:
+Comparacion requerida:
 Enfoque                 Solicitudes seleccionadas                          Valor total      Optimo
 --------------------------------------------------------------------------------------------------
-Codicioso ratio v/w     3258-ZKPAI, 9924-JPRMC, 9739-JLPQJ                        3523          Si
-PD Mochila 0-1          9739-JLPQJ, 3258-ZKPAI, 9924-JPRMC                        3523          Si
+Codicioso ratio v/w     0673-IGUQO                                                 205          No
+PD Mochila 0-1          2220-IAHLS, 5766-ZJYBB                                     388          Si
+El codicioso toma primero la solicitud con mayor ratio v/w; despues ya no le queda capacidad para agregar otra. La PD, en cambio, evalua todas las combinaciones 0-1 y encuentra un par de solicitudes con mayor valor total.

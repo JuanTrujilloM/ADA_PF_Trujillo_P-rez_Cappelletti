@@ -22,6 +22,7 @@ struct ResultadoMochila {
 
 struct ContraejemploCodicioso {
     bool encontrado;                       // true si hay fallo del codicioso
+    int capacidad;                         // capacidad usada en el contraejemplo
     long long triosEvaluados;              // cuantos trios se probaron
     vector<ItemBW> trio;                   // trio donde falla, si existe
     vector<ItemBW> seleccionCodiciosa;     // lo que toma el codicioso
