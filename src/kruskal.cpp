@@ -67,5 +67,42 @@ void writeMSTReport(const string& path,
     }
     out << "\nPeso total del MST: " << mst.totalWeight << "\n";
 
+    Edge firstEdge = mst.mstEdges[0];
+
+    out << "Lema del ciclo: Para cualquier corte (S, V-S) de un grafo conexo\n";
+    out << "ponderado, la arista de menor peso que cruza el corte pertenece a\n";
+    out << "algun MST.\n\n";
+ 
+    out << "Aplicacion al grafo generado:\n\n";
+ 
+    out << "  Arista concreta: (" << firstEdge.u << ", " << firstEdge.v
+        << ") con costo " << firstEdge.cost << ".\n\n";
+ 
+    out << "  Consideremos el corte S = {" << firstEdge.u
+        << "}, V-S = {todos los demas nodos}.\n";
+    out << "  La arista (" << firstEdge.u << ", " << firstEdge.v
+        << ") es la de menor peso que cruza este corte,\n";
+    out << "  ya que cualquier otra arista incidente al nodo " << firstEdge.u
+        << " tiene costo >= " << firstEdge.cost << ".\n\n";
+ 
+    out << "  Demostracion por contradiccion:\n";
+    out << "  Supongamos que existe un MST T* que NO incluye la arista ("
+        << firstEdge.u << ", " << firstEdge.v << ").\n";
+    out << "  Entonces T* usa otra arista (u', v') para conectar el nodo "
+        << firstEdge.u << " al resto\n";
+    out << "  del arbol, con costo c(u', v') >= " << firstEdge.cost << ".\n";
+    out << "  Al anadir (" << firstEdge.u << ", " << firstEdge.v
+        << ") a T* se forma un ciclo C.\n";
+    out << "  Al remover (u', v') de C se obtiene un nuevo arbol T' con:\n";
+    out << "    peso(T') = peso(T*) - c(u', v') + " << firstEdge.cost
+        << " <= peso(T*)\n";
+    out << "  Esto contradice que T* sea estrictamente mejor que T'.\n";
+    out << "  Por lo tanto, la arista (" << firstEdge.u << ", " << firstEdge.v
+        << ") pertenece a algun MST.\n\n";
+ 
+    out << "  Conclusion: Kruskal, al seleccionar en cada paso la arista de menor\n";
+    out << "  costo que no forme ciclo, aplica repetidamente el Lema del ciclo,\n";
+    out << "  garantizando que el resultado es un MST optimo global.\n";
+
     out.close();
 }
