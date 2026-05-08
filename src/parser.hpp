@@ -5,7 +5,7 @@
 using namespace std;
 
 // Represents a customer request (solicitud) with relevant fields.
-struct Solicitud {
+struct Request {
     string customerID;
     int tenure;
     double monthlyCharges;
@@ -15,4 +15,4 @@ struct Solicitud {
 
 // Reads the CSV and returns the vector of requests. 
 // nullCount: number of records with blank TotalCharges (tenure = 0).
-vector<Solicitud> parsearCSV(const string& path, int& nullCount);
+vector<Request> parseCSV(const string& path, int& nullCount);

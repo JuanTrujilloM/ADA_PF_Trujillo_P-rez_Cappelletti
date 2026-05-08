@@ -5,46 +5,58 @@
 
 using namespace std;
 
-struct ItemBW {
-    string customerID;      // id del cliente
-    int tenure;             // antiguedad del cliente
-    double monthlyCharges;  // cargo mensual original
-    double totalCharges;    // cargo total original
-    int peso;               // peso usado en la mochila
-    int valor;              // valor usado en la mochila
+struct BandwidthItem {
+    string customerID;
+    int tenure;
+    double monthlyCharges;
+    double totalCharges;
+
+    // round(TotalCharges)
+    int weight;
+
+    // round(MonthlyCharges * 10)
+    int value;
 };
 
-struct ResultadoMochila {
-    int valorOptimo;              // mejor valor que encontro la DP
-    vector<ItemBW> seleccionados; // items que quedaron elegidos
-    vector<vector<int>> dp;       // tabla completa para poder volver atras
+struct KnapsackResult {
+    int optimalValue;
+    vector<BandwidthItem> selected;
+
+    // full table kept for backtracking
+    vector<vector<int>> dp;
 };
 
-struct ContraejemploCodicioso {
-    bool encontrado;                       // true si hay fallo del codicioso
-    int capacidad;                         // capacidad usada en el contraejemplo
-    long long triosEvaluados;              // cuantos trios se probaron
-    vector<ItemBW> trio;                   // trio donde falla, si existe
-    vector<ItemBW> seleccionCodiciosa;     // lo que toma el codicioso
-    int valorCodicioso;                    // valor del codicioso
-    vector<ItemBW> seleccionOptima;        // lo que toma la DP
-    int valorOptimo;                       // valor de la DP
-    vector<ItemBW> mejorTrio;              // mejor trio visto aunque no falle
-    vector<ItemBW> mejorSeleccionCodiciosa;// codicioso en el mejor intento
-    int mejorValorCodicioso;               // valor codicioso del mejor intento
-    vector<ItemBW> mejorSeleccionOptima;   // DP en el mejor intento
-    int mejorValorOptimo;                  // valor DP del mejor intento
-    int mejorDiferencia;                   // diferencia DP - codicioso
+struct GreedyCounterexample {
+    bool found;
+    int capacity;
+    long long evaluatedTriples;
+    vector<BandwidthItem> triple;
+    vector<BandwidthItem> greedySelection;
+    int greedyValue;
+    vector<BandwidthItem> optimalSelection;
+    int optimalValue;
+    
+    // best attempt tracked even when greedy tied with DP
+    vector<BandwidthItem> bestTriple;
+    vector<BandwidthItem> bestGreedySelection;
+    int bestGreedyValue;
+    vector<BandwidthItem> bestOptimalSelection;
+    int bestOptimalValue;
+    int bestDifference;
 };
 
-vector<ItemBW> construirItemsActivos(const vector<Solicitud>& solicitudesOrdenadas,
-                                     int maxItems = 50);
+// Builds the list of items to consider for the knapsack, applying the specified filters and transformations.
+vector<BandwidthItem> buildActiveItems(const vector<Request>& sortedRequests,
+                                       int maxItems = 50);
 
-ResultadoMochila resolverMochila01(const vector<ItemBW>& items, int capacidad);
+// Solves the 0-1 knapsack problem using dynamic programming and returns the optimal value and selected items.
+KnapsackResult solveKnapsack01(const vector<BandwidthItem>& items, int capacity);
 
-ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
-                                                    int capacidad);
+// Finds a counterexample of 3 items where the greedy by ratio v/w is suboptimal compared to the DP solution, within the given items and capacity.
+GreedyCounterexample findGreedyCounterexample(const vector<BandwidthItem>& items,
+                                              int capacity);
 
-void generarReporteAsignacionBW(const vector<Solicitud>& solicitudesOrdenadas,
-                                 const string& outputPath = "results/asignacion_bw.txt",
-                                 int capacidad = 500);
+// Generates the bandwidth assignment report based on the sorted requests, writing the output to the specified path and using the given capacity for analysis.
+void generateBandwidthReport(const vector<Request>& sortedRequests,
+                             const string& outputPath = "results/asignacion_bw.txt",
+                             int capacity = 500);

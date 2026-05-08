@@ -4,7 +4,7 @@ using namespace std;
 
 // Returns the index of an element with tenure == k in a descending-sorted array,
 // or -1 if no such element exists.
-int busquedaBinaria(const vector<Solicitud>& arr, int left, int right, int k) {
+int binarySearch(const vector<Request>& arr, int left, int right, int k) {
     if (left > right)
         return -1;
 
@@ -13,8 +13,8 @@ int busquedaBinaria(const vector<Solicitud>& arr, int left, int right, int k) {
     if (arr[mid].tenure == k) {
         return mid;
     } else if (arr[mid].tenure > k) {
-        return busquedaBinaria(arr, mid + 1, right, k);
+        return binarySearch(arr, mid + 1, right, k);
     } else {
-        return busquedaBinaria(arr, left, mid - 1, k);
+        return binarySearch(arr, left, mid - 1, k);
     }
 }

@@ -54,3 +54,28 @@ Aristas del MST (19 aristas):
        5       8       129
 
 Peso total del MST: 2388
+Lema del ciclo: Para cualquier corte (S, V-S) de un grafo conexo
+ponderado, la arista de menor peso que cruza el corte pertenece a
+algun MST.
+
+Aplicacion al grafo generado:
+
+  Arista concreta: (5, 10) con costo 123.
+
+  Consideremos el corte S = {5}, V-S = {todos los demas nodos}.
+  La arista (5, 10) es la de menor peso que cruza este corte,
+  ya que cualquier otra arista incidente al nodo 5 tiene costo >= 123.
+
+  Demostracion por contradiccion:
+  Supongamos que existe un MST T* que NO incluye la arista (5, 10).
+  Entonces T* usa otra arista (u', v') para conectar el nodo 5 al resto
+  del arbol, con costo c(u', v') >= 123.
+  Al anadir (5, 10) a T* se forma un ciclo C.
+  Al remover (u', v') de C se obtiene un nuevo arbol T' con:
+    peso(T') = peso(T*) - c(u', v') + 123 <= peso(T*)
+  Esto contradice que T* sea estrictamente mejor que T'.
+  Por lo tanto, la arista (5, 10) pertenece a algun MST.
+
+  Conclusion: Kruskal, al seleccionar en cada paso la arista de menor
+  costo que no forme ciclo, aplica repetidamente el Lema del ciclo,
+  garantizando que el resultado es un MST optimo global.

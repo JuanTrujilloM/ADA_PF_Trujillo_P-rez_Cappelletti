@@ -9,59 +9,47 @@
 
 using namespace std;
 
-// Calcula valor / peso para ordenar por "mejor rendimiento".
-static double ratioValorPeso(const ItemBW& item) {
-    // Si peso es 0, evitamos dividir por cero.
-    if (item.peso == 0) {
-        return item.valor > 0 ? numeric_limits<double>::infinity() : 0.0;
-    }
-    return static_cast<double>(item.valor) / item.peso;
+// Helper function to compute value/weight ratio, handling zero weight cases.
+static double valueWeightRatio(const BandwidthItem& item) {
+    if (item.weight == 0)
+        return item.value > 0 ? numeric_limits<double>::infinity() : 0.0;
+    return static_cast<double>(item.value) / item.weight;
 }
 
-// Deja primero el item con mayor ratio.
-static bool compararPorRatioDesc(const ItemBW& a, const ItemBW& b) {
-    double ratioA = ratioValorPeso(a);
-    double ratioB = ratioValorPeso(b);
-
-    // Primero manda el ratio.
-    if (ratioA != ratioB) return ratioA > ratioB;
-    // Si empatan, preferimos mas valor.
-    if (a.valor != b.valor) return a.valor > b.valor;
-    // Si siguen empatados, preferimos menor peso.
-    if (a.peso != b.peso) return a.peso < b.peso;
-    // Ultimo desempate para que salga siempre igual.
+// Comparison function for sorting items by ratio v/w in descending order, with tie-breaking.
+static bool compareByRatioDesc(const BandwidthItem& a, const BandwidthItem& b) {
+    double ra = valueWeightRatio(a), rb = valueWeightRatio(b);
+    if (ra != rb) return ra > rb;
+    if (a.value != b.value) return a.value > b.value;
+    if (a.weight != b.weight) return a.weight < b.weight;
     return a.customerID < b.customerID;
 }
 
-// Prueba la idea simple: tomar items por ratio mientras quepan.
-static vector<ItemBW> resolverCodiciosoRatio(const vector<ItemBW>& items,
-                                             int capacidad,
-                                             int& valorTotal) {
-    // Copiamos para no tocar el vector original.
-    vector<ItemBW> ordenados = items;
-    // Ordenamos de mejor ratio a peor ratio.
-    sort(ordenados.begin(), ordenados.end(), compararPorRatioDesc);
+// Solves the greedy selection by ratio v/w for the given items and capacity, returning the selected items and total value.
+static vector<BandwidthItem> solveGreedyRatio(const vector<BandwidthItem>& items,
+                                              int capacity,
+                                              int& totalValue) {
+    vector<BandwidthItem> sorted = items;
+    sort(sorted.begin(), sorted.end(), compareByRatioDesc);
 
-    vector<ItemBW> seleccionados;
-    valorTotal = 0;
-    int restante = capacidad;
-
-    for (const auto& item : ordenados) {
-        // Si cabe, lo metemos.
-        if (item.peso <= restante) {
-            seleccionados.push_back(item);
-            valorTotal += item.valor;
-            restante -= item.peso;
+    vector<BandwidthItem> selected;
+    totalValue = 0;
+    int remaining = capacity;
+    
+    // Iterate over the sorted items and select them greedily by ratio until capacity is exhausted.
+    for (const auto& item : sorted) {
+        if (item.weight <= remaining) {
+            selected.push_back(item);
+            totalValue += item.value;
+            remaining -= item.weight;
         }
     }
-
-    return seleccionados;
+    return selected;
 }
 
-// Arma una lista corta de ids para imprimir en el reporte.
-static string listarIDs(const vector<ItemBW>& items) {
+// Utility function to list customer IDs of selected items in a readable format.
+static string listIDs(const vector<BandwidthItem>& items) {
     if (items.empty()) return "(ninguna)";
-
     ostringstream oss;
     for (size_t i = 0; i < items.size(); ++i) {
         if (i > 0) oss << ", ";
@@ -70,402 +58,337 @@ static string listarIDs(const vector<ItemBW>& items) {
     return oss.str();
 }
 
-// Revisa que lo que llega desde el Modulo A siga ordenado.
-static bool estaOrdenadoPorTenureDesc(const vector<Solicitud>& solicitudes) {
-    for (size_t i = 1; i < solicitudes.size(); ++i) {
-        // Si uno anterior es menor, ya no esta descendente.
-        if (solicitudes[i - 1].tenure < solicitudes[i].tenure) {
-            return false;
-        }
-    }
+// Checks if the given requests are sorted by tenure in descending order.
+static bool isSortedByTenureDesc(const vector<Request>& requests) {
+    for (size_t i = 1; i < requests.size(); ++i)
+        if (requests[i - 1].tenure < requests[i].tenure) return false;
     return true;
 }
 
-// Cuenta cuantos items entran solos con la capacidad dada.
-static int contarItemsQueCaben(const vector<ItemBW>& items, int capacidad) {
-    int cantidad = 0;
-    for (const auto& item : items) {
-        if (item.peso <= capacidad) {
-            ++cantidad;
-        }
-    }
-    return cantidad;
+// Counts how many items have weight less than or equal to the given capacity.
+static int countFittingItems(const vector<BandwidthItem>& items, int capacity) {
+    int count = 0;
+    for (const auto& item : items)
+        if (item.weight <= capacity) ++count;
+    return count;
 }
 
-// Imprime los 50 items antes de correr DP
-static void imprimirTablaItems(ostream& out, const vector<ItemBW>& items) {
+// Prints a table of items with their attributes to the given output stream.
+static void printItemsTable(ostream& out, const vector<BandwidthItem>& items) {
     out << "Solicitudes consideradas antes de la DP\n";
     out << "customerID,tenure,MonthlyCharges,TotalCharges,peso,valor\n";
     out << fixed << setprecision(2);
     for (const auto& item : items) {
-        // Dejamos visibles los datos originales y los calculados
         out << item.customerID << ","
             << item.tenure << ","
             << item.monthlyCharges << ","
             << item.totalCharges << ","
-            << item.peso << ","
-            << item.valor << "\n";
+            << item.weight << ","
+            << item.value << "\n";
     }
 }
 
-// Imprime un trio con su ratio para revisar el codicioso
-static void imprimirTablaTrio(ostream& out, const vector<ItemBW>& trio) {
+// Prints a table of the three items in the counterexample triple, showing their attributes and ratio.
+static void printTripleTable(ostream& out, const vector<BandwidthItem>& triple) {
     out << left << setw(15) << "customerID"
         << right << setw(10) << "peso"
         << setw(10) << "valor"
         << setw(14) << "ratio" << "\n";
     out << string(49, '-') << "\n";
-
     out << fixed << setprecision(4);
-    for (const auto& item : trio) {
-        // Ratio usado por el algoritmo codicioso
+    for (const auto& item : triple) {
         out << left << setw(15) << item.customerID
-            << right << setw(10) << item.peso
-            << setw(10) << item.valor
-            << setw(14) << ratioValorPeso(item) << "\n";
+            << right << setw(10) << item.weight
+            << setw(10) << item.value
+            << setw(14) << valueWeightRatio(item) << "\n";
     }
 }
 
-// Imprime codicioso vs DP en formato facil de leer
-static void imprimirComparacion(ostream& out,
-                                const vector<ItemBW>& seleccionCodiciosa,
-                                int valorCodicioso,
-                                const vector<ItemBW>& seleccionOptima,
-                                int valorOptimo,
-                                bool optimoCodicioso) {
+// Prints a comparison table of the greedy selection vs the optimal selection, showing their total values and whether greedy is optimal.
+static void printComparison(ostream& out,
+                            const vector<BandwidthItem>& greedySelection,
+                            int greedyValue,
+                            const vector<BandwidthItem>& optimalSelection,
+                            int optimalValue,
+                            bool greedyIsOptimal) {
     out << left << setw(24) << "Enfoque"
         << setw(48) << "Solicitudes seleccionadas"
         << right << setw(14) << "Valor total"
         << setw(12) << "Optimo" << "\n";
     out << string(98, '-') << "\n";
     out << left << setw(24) << "Codicioso ratio v/w"
-        << setw(48) << listarIDs(seleccionCodiciosa)
-        << right << setw(14) << valorCodicioso
-        << setw(12) << (optimoCodicioso ? "Si" : "No") << "\n";
+        << setw(48) << listIDs(greedySelection)
+        << right << setw(14) << greedyValue
+        << setw(12) << (greedyIsOptimal ? "Si" : "No") << "\n";
     out << left << setw(24) << "PD Mochila 0-1"
-        << setw(48) << listarIDs(seleccionOptima)
-        << right << setw(14) << valorOptimo
+        << setw(48) << listIDs(optimalSelection)
+        << right << setw(14) << optimalValue
         << setw(12) << "Si" << "\n";
 }
 
-vector<ItemBW> construirItemsActivos(const vector<Solicitud>& solicitudesOrdenadas,
-                                     int maxItems) {
-    vector<ItemBW> items;
-    // Reservamos espacio para las 50 solicitudes pedidas
+// Builds the list of items to consider for the knapsack, applying the specified filters and transformations.
+vector<BandwidthItem> buildActiveItems(const vector<Request>& sortedRequests, int maxItems) {
+    vector<BandwidthItem> items;
     items.reserve(maxItems);
-
-    for (const auto& solicitud : solicitudesOrdenadas) {
-        // Activo significa Churn == No, o sea churn == false
-        if (!solicitud.churn) {
-            ItemBW item;
-            // Guardamos datos originales para poder mostrar trazabilidad
-            item.customerID = solicitud.customerID;
-            item.tenure = solicitud.tenure;
-            item.monthlyCharges = solicitud.monthlyCharges;
-            item.totalCharges = solicitud.totalCharges;
-            // Formula literal del enunciado
-            item.peso = static_cast<int>(round(solicitud.totalCharges));
-            // Valor pedido por el enunciado
-            item.valor = static_cast<int>(round(solicitud.monthlyCharges * 10.0));
+    
+    for (const auto& req : sortedRequests) {
+        if (!req.churn) {
+            BandwidthItem item;
+            item.customerID     = req.customerID;
+            item.tenure         = req.tenure;
+            item.monthlyCharges = req.monthlyCharges;
+            item.totalCharges   = req.totalCharges;
+            item.weight = static_cast<int>(round(req.totalCharges));
+            item.value  = static_cast<int>(round(req.monthlyCharges * 10.0));
             items.push_back(item);
-
-            // Nos detenemos al llegar a las primeras 50 activas
-            if (static_cast<int>(items.size()) == maxItems) {
-                break;
-            }
+            if (static_cast<int>(items.size()) == maxItems) break;
         }
     }
-
     return items;
 }
 
-static vector<ItemBW> construirItemsReales(const vector<Solicitud>& solicitudes) {
-    vector<ItemBW> items;
-    items.reserve(solicitudes.size());
+// Builds the list of items from the full dataset without filtering by churn, used for searching a real counterexample.
+static vector<BandwidthItem> buildRealItems(const vector<Request>& requests) {
+    vector<BandwidthItem> items;
+    items.reserve(requests.size());
 
-    for (const auto& solicitud : solicitudes) {
-        ItemBW item;
-        item.customerID = solicitud.customerID;
-        item.tenure = solicitud.tenure;
-        item.monthlyCharges = solicitud.monthlyCharges;
-        item.totalCharges = solicitud.totalCharges;
-        item.peso = static_cast<int>(round(solicitud.totalCharges));
-        item.valor = static_cast<int>(round(solicitud.monthlyCharges * 10.0));
-
-        if (item.peso > 0 && item.valor > 0) {
+    for (const auto& req : requests) {
+        BandwidthItem item;
+        item.customerID     = req.customerID;
+        item.tenure         = req.tenure;
+        item.monthlyCharges = req.monthlyCharges;
+        item.totalCharges   = req.totalCharges;
+        item.weight = static_cast<int>(round(req.totalCharges));
+        item.value  = static_cast<int>(round(req.monthlyCharges * 10.0));
+        if (item.weight > 0 && item.value > 0)
             items.push_back(item);
-        }
     }
-
     return items;
 }
 
-ResultadoMochila resolverMochila01(const vector<ItemBW>& items, int capacidad) {
+// Solves the 0-1 knapsack problem using dynamic programming and returns the optimal value and selected items.
+KnapsackResult solveKnapsack01(const vector<BandwidthItem>& items, int capacity) {
     int n = static_cast<int>(items.size());
-    // Tabla dp: filas = items vistos, columnas = capacidad usada
-    vector<vector<int>> dp(n + 1, vector<int>(capacidad + 1, 0));
+    vector<vector<int>> dp(n + 1, vector<int>(capacity + 1, 0));
 
     for (int i = 1; i <= n; ++i) {
-        // Item actual: en dp usamos i, en vector usamos i - 1
-        int peso = items[i - 1].peso;
-        int valor = items[i - 1].valor;
-
-        for (int w = 0; w <= capacidad; ++w) {
-            // Si no cabe, copiamos la fila de arriba
-            if (peso > w) {
-                dp[i][w] = dp[i - 1][w];
-            } else {
-                // Si cabe, elegimos entre no tomarlo o tomarlo
-                dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - peso] + valor);
-            }
+        int w = items[i - 1].weight;
+        int v = items[i - 1].value;
+        for (int c = 0; c <= capacity; ++c) {
+            if (w > c)
+                dp[i][c] = dp[i - 1][c];
+            else
+                dp[i][c] = max(dp[i - 1][c], dp[i - 1][c - w] + v);
         }
     }
 
-    vector<ItemBW> seleccionados;
-    // Empezamos a volver desde la esquina final
-    int w = capacidad;
+    // Backtrack from dp[n][capacity] to recover the selected items
+    vector<BandwidthItem> selected;
+    int rem = capacity;
     for (int i = n; i > 0; --i) {
-        const ItemBW& item = items[i - 1];
-        // Si el valor cambio, este item fue usado
-        if (item.peso <= w &&
-            dp[i][w] != dp[i - 1][w] &&
-            dp[i][w] == dp[i - 1][w - item.peso] + item.valor) {
-            seleccionados.push_back(item);
-            // Restamos su peso para seguir el camino
-            w -= item.peso;
+        const BandwidthItem& item = items[i - 1];
+        if (item.weight <= rem &&
+            dp[i][rem] != dp[i - 1][rem] &&
+            dp[i][rem] == dp[i - 1][rem - item.weight] + item.value) {
+            selected.push_back(item);
+            rem -= item.weight;
         }
     }
-    // El backtracking sale al reves, asi que lo acomodamos
-    reverse(seleccionados.begin(), seleccionados.end());
+    reverse(selected.begin(), selected.end());
 
-    ResultadoMochila resultado;
-    // La respuesta optima esta en la ultima celda
-    resultado.valorOptimo = dp[n][capacidad];
-    resultado.seleccionados = seleccionados;
-    resultado.dp = dp;
-    return resultado;
+    return {dp[n][capacity], selected, dp};
 }
 
-ContraejemploCodicioso buscarContraejemploCodicioso(const vector<ItemBW>& items,
-                                                    int capacidad) {
-    ContraejemploCodicioso contraejemplo;
-    // Arrancamos diciendo que todavia no encontramos fallo
-    contraejemplo.encontrado = false;
-    contraejemplo.capacidad = capacidad;
-    contraejemplo.triosEvaluados = 0;
-    contraejemplo.valorCodicioso = 0;
-    contraejemplo.valorOptimo = 0;
-    contraejemplo.mejorValorCodicioso = 0;
-    contraejemplo.mejorValorOptimo = 0;
-    contraejemplo.mejorDiferencia = numeric_limits<int>::min();
-
+// Finds a counterexample of 3 items where the greedy by ratio v/w is suboptimal compared to the DP solution, within the given items and capacity.
+GreedyCounterexample findGreedyCounterexample(const vector<BandwidthItem>& items,
+                                              int capacity) {
+    GreedyCounterexample result;
+    result.found            = false;
+    result.capacity         = capacity;
+    result.evaluatedTriples = 0;
+    result.greedyValue      = 0;
+    result.optimalValue     = 0;
+    result.bestGreedyValue  = 0;
+    result.bestOptimalValue = 0;
+    result.bestDifference   = numeric_limits<int>::min();
+    
+    // Evaluate all combinations of 3 distinct items to find a counterexample where greedy by ratio v/w is suboptimal.
     int n = static_cast<int>(items.size());
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             for (int k = j + 1; k < n; ++k) {
-                // Probamos cada combinacion de 3 items
-                ++contraejemplo.triosEvaluados;
-                vector<ItemBW> trio = {items[i], items[j], items[k]};
+                ++result.evaluatedTriples;
+                vector<BandwidthItem> triple = {items[i], items[j], items[k]};
 
-                int valorCodicioso = 0;
-                // Primero corremos el metodo por ratio
-                vector<ItemBW> seleccionCodiciosa =
-                    resolverCodiciosoRatio(trio, capacidad, valorCodicioso);
+                // Solve the greedy selection by ratio v/w and the optimal DP solution for this triple and the given capacity, and compare their values.
+                int greedyVal = 0;
+                vector<BandwidthItem> greedySel = solveGreedyRatio(triple, capacity, greedyVal);
+                KnapsackResult optimal = solveKnapsack01(triple, capacity);
+                int diff = optimal.optimalValue - greedyVal;
 
-                // Luego corremos DP para saber el verdadero optimo
-                ResultadoMochila optimo = resolverMochila01(trio, capacidad);
-                int diferencia = optimo.valorOptimo - valorCodicioso;
-
-                // Guardamos el mejor intento, aunque no sea contraejemplo
-                if (contraejemplo.mejorTrio.empty() ||
-                    diferencia > contraejemplo.mejorDiferencia ||
-                    (diferencia == contraejemplo.mejorDiferencia &&
-                     optimo.valorOptimo > contraejemplo.mejorValorOptimo)) {
-                    contraejemplo.mejorTrio = trio;
-                    contraejemplo.mejorSeleccionCodiciosa = seleccionCodiciosa;
-                    contraejemplo.mejorValorCodicioso = valorCodicioso;
-                    contraejemplo.mejorSeleccionOptima = optimo.seleccionados;
-                    contraejemplo.mejorValorOptimo = optimo.valorOptimo;
-                    contraejemplo.mejorDiferencia = diferencia;
+                if (result.bestTriple.empty() ||
+                    diff > result.bestDifference ||
+                    (diff == result.bestDifference && optimal.optimalValue > result.bestOptimalValue)) {
+                    result.bestTriple           = triple;
+                    result.bestGreedySelection  = greedySel;
+                    result.bestGreedyValue      = greedyVal;
+                    result.bestOptimalSelection = optimal.selected;
+                    result.bestOptimalValue     = optimal.optimalValue;
+                    result.bestDifference       = diff;
                 }
 
-                // Si DP gana, este es el contraejemplo que buscamos
-                if (valorCodicioso < optimo.valorOptimo) {
-                    contraejemplo.encontrado = true;
-                    contraejemplo.capacidad = capacidad;
-                    contraejemplo.trio = trio;
-                    contraejemplo.seleccionCodiciosa = seleccionCodiciosa;
-                    contraejemplo.valorCodicioso = valorCodicioso;
-                    contraejemplo.seleccionOptima = optimo.seleccionados;
-                    contraejemplo.valorOptimo = optimo.valorOptimo;
-                    return contraejemplo;
+                if (greedyVal < optimal.optimalValue) {
+                    result.found            = true;
+                    result.capacity         = capacity;
+                    result.triple           = triple;
+                    result.greedySelection  = greedySel;
+                    result.greedyValue      = greedyVal;
+                    result.optimalSelection = optimal.selected;
+                    result.optimalValue     = optimal.optimalValue;
+                    return result;
                 }
             }
         }
     }
-
-    return contraejemplo;
+    return result;
 }
 
-static ContraejemploCodicioso buscarContraejemploRealDataset(
-    const vector<Solicitud>& solicitudes,
-    int capacidadOficial) {
-    ContraejemploCodicioso contraejemplo;
-    contraejemplo.encontrado = false;
-    contraejemplo.capacidad = 0;
-    contraejemplo.triosEvaluados = 0;
-    contraejemplo.valorCodicioso = 0;
-    contraejemplo.valorOptimo = 0;
-    contraejemplo.mejorValorCodicioso = 0;
-    contraejemplo.mejorValorOptimo = 0;
-    contraejemplo.mejorDiferencia = numeric_limits<int>::min();
-
-    vector<ItemBW> candidatos;
-    for (const auto& item : construirItemsReales(solicitudes)) {
-        if (item.peso <= capacidadOficial) {
-            candidatos.push_back(item);
-        }
-    }
-
-    sort(candidatos.begin(), candidatos.end(), compararPorRatioDesc);
-
-    int n = static_cast<int>(candidatos.size());
+// Searches the full dataset for a 3-item counterexample using a mini-capacity
+// equal to the sum of the two smaller items, forcing greedy to fail.
+static GreedyCounterexample findCounterexampleInDataset(const vector<Request>& requests,
+                                                        int officialCapacity) {
+    GreedyCounterexample result;
+    result.found            = false;
+    result.capacity         = 0;
+    result.evaluatedTriples = 0;
+    result.greedyValue      = 0;
+    result.optimalValue     = 0;
+    result.bestGreedyValue  = 0;
+    result.bestOptimalValue = 0;
+    result.bestDifference   = numeric_limits<int>::min();
+    
+    // Build candidate items from the full dataset, filtering by officialCapacity to reduce the search space.
+    vector<BandwidthItem> candidates;
+    for (const auto& item : buildRealItems(requests))
+        if (item.weight <= officialCapacity) candidates.push_back(item);
+    sort(candidates.begin(), candidates.end(), compareByRatioDesc);
+    
+    // Evaluate all combinations of 3 distinct candidate items to find a counterexample where greedy by ratio v/w is suboptimal.
+    int n = static_cast<int>(candidates.size());
     for (int i = 0; i < n; ++i) {
-        const ItemBW& primeroGreedy = candidatos[i];
-
+        const BandwidthItem& first = candidates[i];
         for (int j = i + 1; j < n; ++j) {
-            const ItemBW& segundo = candidatos[j];
-            if (segundo.peso >= primeroGreedy.peso) continue;
-
+            const BandwidthItem& second = candidates[j];
+            if (second.weight >= first.weight) continue;
             for (int k = j + 1; k < n; ++k) {
-                const ItemBW& tercero = candidatos[k];
-                if (tercero.peso >= primeroGreedy.peso) continue;
-                ++contraejemplo.triosEvaluados;
+                const BandwidthItem& third = candidates[k];
+                if (third.weight >= first.weight) continue;
+                ++result.evaluatedTriples;
 
-                int capacidadMini = segundo.peso + tercero.peso;
-                vector<ItemBW> trio = {primeroGreedy, segundo, tercero};
+                int miniCapacity = second.weight + third.weight;
+                vector<BandwidthItem> triple = {first, second, third};
 
-                int valorCodicioso = 0;
-                vector<ItemBW> seleccionCodiciosa =
-                    resolverCodiciosoRatio(trio, capacidadMini, valorCodicioso);
-                ResultadoMochila optimo = resolverMochila01(trio, capacidadMini);
-                int diferencia = optimo.valorOptimo - valorCodicioso;
+                int greedyVal = 0;
+                vector<BandwidthItem> greedySel = solveGreedyRatio(triple, miniCapacity, greedyVal);
+                KnapsackResult optimal = solveKnapsack01(triple, miniCapacity);
+                int diff = optimal.optimalValue - greedyVal;
 
-                if (contraejemplo.mejorTrio.empty() ||
-                    diferencia > contraejemplo.mejorDiferencia ||
-                    (diferencia == contraejemplo.mejorDiferencia &&
-                     optimo.valorOptimo > contraejemplo.mejorValorOptimo)) {
-                    contraejemplo.mejorTrio = trio;
-                    contraejemplo.mejorSeleccionCodiciosa = seleccionCodiciosa;
-                    contraejemplo.mejorValorCodicioso = valorCodicioso;
-                    contraejemplo.mejorSeleccionOptima = optimo.seleccionados;
-                    contraejemplo.mejorValorOptimo = optimo.valorOptimo;
-                    contraejemplo.mejorDiferencia = diferencia;
+                if (result.bestTriple.empty() ||
+                    diff > result.bestDifference ||
+                    (diff == result.bestDifference && optimal.optimalValue > result.bestOptimalValue)) {
+                    result.bestTriple           = triple;
+                    result.bestGreedySelection  = greedySel;
+                    result.bestGreedyValue      = greedyVal;
+                    result.bestOptimalSelection = optimal.selected;
+                    result.bestOptimalValue     = optimal.optimalValue;
+                    result.bestDifference       = diff;
                 }
 
-                if (valorCodicioso < optimo.valorOptimo) {
-                    contraejemplo.encontrado = true;
-                    contraejemplo.capacidad = capacidadMini;
-                    contraejemplo.trio = trio;
-                    contraejemplo.seleccionCodiciosa = seleccionCodiciosa;
-                    contraejemplo.valorCodicioso = valorCodicioso;
-                    contraejemplo.seleccionOptima = optimo.seleccionados;
-                    contraejemplo.valorOptimo = optimo.valorOptimo;
-                    return contraejemplo;
+                if (greedyVal < optimal.optimalValue) {
+                    result.found            = true;
+                    result.capacity         = miniCapacity;
+                    result.triple           = triple;
+                    result.greedySelection  = greedySel;
+                    result.greedyValue      = greedyVal;
+                    result.optimalSelection = optimal.selected;
+                    result.optimalValue     = optimal.optimalValue;
+                    return result;
                 }
             }
         }
     }
-
-    return contraejemplo;
+    return result;
 }
 
-void generarReporteAsignacionBW(const vector<Solicitud>& solicitudesOrdenadas,
-                                 const string& outputPath,
-                                 int capacidad) {
-    // Tomamos las 50 activas desde el arreglo ya ordenado.
-    vector<ItemBW> items = construirItemsActivos(solicitudesOrdenadas, 50);
-    // Contamos si alguna cabe con la formula literal.
-    int itemsQueCaben = contarItemsQueCaben(items, capacidad);
-    // Dejamos una verificacion simple del orden recibido.
-    bool ordenadoDesc = estaOrdenadoPorTenureDesc(solicitudesOrdenadas);
+// Generates the bandwidth assignment report based on the sorted requests, writing the output to the specified path and using the given capacity for analysis.
+void generateBandwidthReport(const vector<Request>& sortedRequests,
+                             const string& outputPath,
+                             int capacity) {
+    vector<BandwidthItem> items = buildActiveItems(sortedRequests, 50);
+    int fittingCount = countFittingItems(items, capacity);
+    bool isSorted    = isSortedByTenureDesc(sortedRequests);
 
     ofstream out(outputPath);
-    if (!out.is_open()) {
+    if (!out.is_open())
         throw runtime_error("Could not open file: " + outputPath);
-    }
 
-    // BOM para que Windows lea bien el archivo UTF-8.
     out << "\xEF\xBB\xBF";
     out << "Modulo C - Asignacion de ancho de banda\n";
-    out << "========================================\n\n";
-    out << "Capacidad W: " << capacidad << "\n";
-    out << "Numero de solicitudes consideradas: " << items.size() << "\n";
+    out << "Capacidad W: " << capacity << "\n";
+    out << "Numero de requests consideradas: " << items.size() << "\n";
     out << "Verificacion de entrada:\n";
     out << "- Vector recibido desde Modulo A ordenado por tenure descendente: "
-        << (ordenadoDesc ? "OK" : "ADVERTENCIA: no esta ordenado") << "\n";
+        << (isSorted ? "OK" : "ADVERTENCIA: no esta ordenado") << "\n";
     out << "- Filtro aplicado: Churn == \"No\" (campo churn == false).\n";
-    out << "- Peso usado: round(TotalCharges) sobre Solicitud.totalCharges parseado como double.\n";
+    out << "- Peso usado: round(TotalCharges) sobre Request.totalCharges parseado como double.\n";
     out << "- Valor usado: round(MonthlyCharges * 10).\n\n";
 
-    imprimirTablaItems(out, items);
-    out << "\nCantidad de solicitudes consideradas con peso <= " << capacidad
-        << ": " << itemsQueCaben << "\n";
-    if (itemsQueCaben == 0) {
-        // Esto explica por que el optimo literal queda en cero.
-        out << "Diagnostico: todas las 50 solicitudes consideradas tienen peso > "
-            << capacidad << ". Con W = " << capacidad
+    printItemsTable(out, items);
+    out << "\nCantidad de requests consideradas con peso <= " << capacity
+        << ": " << fittingCount << "\n";
+    if (fittingCount == 0) {
+        out << "Diagnostico: todas las 50 requests consideradas tienen peso > "
+            << capacity << ". Con W = " << capacity
             << ", ninguna solicitud puede entrar en la mochila; el enunciado "
             << "produce una instancia degenerada para estos datos y formulas.\n";
     }
 
-    // Ejecutamos la solucion literal.
-    ResultadoMochila resultado = resolverMochila01(items, capacidad);
-    // Buscamos el fallo del codicioso con esos mismos pesos.
-    ContraejemploCodicioso contraejemplo =
-        buscarContraejemploCodicioso(items, capacidad);
+    // Execute the DP knapsack solution and the greedy counterexample search, and print the results and analysis.
+    KnapsackResult result          = solveKnapsack01(items, capacity);
+    GreedyCounterexample counterex = findGreedyCounterexample(items, capacity);
 
     out << "\nResultado DP Mochila 0-1\n";
     out << "------------------------\n";
-    out << "Valor optimo total: " << resultado.valorOptimo << "\n";
-    out << "Numero de solicitudes seleccionadas: "
-        << resultado.seleccionados.size() << "\n\n";
+    out << "Valor optimo total: " << result.optimalValue << "\n";
+    out << "Numero de requests seleccionadas: " << result.selected.size() << "\n\n";
 
     out << "Solicitudes seleccionadas por PD Mochila 0-1\n";
     out << "customerID,peso,valor\n";
-    if (resultado.seleccionados.empty()) {
+    if (result.selected.empty()) {
         out << "(ninguna)\n";
     } else {
-        for (const auto& item : resultado.seleccionados) {
-            out << item.customerID << "," << item.peso << "," << item.valor << "\n";
-        }
+        for (const auto& item : result.selected)
+            out << item.customerID << "," << item.weight << "," << item.value << "\n";
     }
 
     out << "\nContraejemplo codicioso por ratio v/w\n";
     out << "-------------------------------------\n";
-    out << "Trios evaluados: " << contraejemplo.triosEvaluados << "\n";
-    if (contraejemplo.encontrado) {
-        // Caso ideal: encontramos un trio donde DP gana.
+    out << "Trios evaluados: " << counterex.evaluatedTriples << "\n";
+    if (counterex.found) {
         out << "Trio usado:\n";
-        imprimirTablaTrio(out, contraejemplo.trio);
-
+        printTripleTable(out, counterex.triple);
         out << "\nComparacion:\n";
-        imprimirComparacion(out,
-                            contraejemplo.seleccionCodiciosa,
-                            contraejemplo.valorCodicioso,
-                            contraejemplo.seleccionOptima,
-                            contraejemplo.valorOptimo,
-                            false);
+        printComparison(out, counterex.greedySelection, counterex.greedyValue,
+                        counterex.optimalSelection, counterex.optimalValue, false);
     } else {
-        // Si no existe, dejamos la razon en el reporte.
-        out << "No se encontro un trio de solicitudes, dentro del conjunto de "
+        out << "No se encontro un trio de requests, dentro del conjunto de "
             << items.size()
             << ", donde el codicioso por ratio v/w tenga menor valor que la PD "
-            << "Mochila 0-1 con W = " << capacidad << ".\n";
+            << "Mochila 0-1 con W = " << capacity << ".\n";
         out << "Razon: ";
-        if (itemsQueCaben == 0) {
-            out << "ninguna de las 50 solicitudes cabe individualmente con W = "
-                << capacidad
+        if (fittingCount == 0) {
+            out << "ninguna de las 50 requests cabe individualmente con W = "
+                << capacity
                 << "; por eso, en todos los trios tanto el codicioso como la DP "
                 << "seleccionan el conjunto vacio con valor 0.\n";
         } else {
@@ -473,19 +396,13 @@ void generarReporteAsignacionBW(const vector<Solicitud>& solicitudesOrdenadas,
                 << "valor optimo de la DP; no hubo caso con codicioso < optimo.\n";
         }
 
-        if (!contraejemplo.mejorTrio.empty()) {
-            // Igual mostramos el mejor intento para que no quede oculto.
+        if (!counterex.bestTriple.empty()) {
             out << "\nMejor intento encontrado:\n";
-            out << "Diferencia PD - codicioso: "
-                << contraejemplo.mejorDiferencia << "\n";
-            imprimirTablaTrio(out, contraejemplo.mejorTrio);
+            out << "Diferencia PD - codicioso: " << counterex.bestDifference << "\n";
+            printTripleTable(out, counterex.bestTriple);
             out << "\nComparacion del mejor intento:\n";
-            imprimirComparacion(out,
-                                contraejemplo.mejorSeleccionCodiciosa,
-                                contraejemplo.mejorValorCodicioso,
-                                contraejemplo.mejorSeleccionOptima,
-                                contraejemplo.mejorValorOptimo,
-                                true);
+            printComparison(out, counterex.bestGreedySelection, counterex.bestGreedyValue,
+                            counterex.bestOptimalSelection, counterex.bestOptimalValue, true);
         }
     }
 
@@ -503,50 +420,42 @@ void generarReporteAsignacionBW(const vector<Solicitud>& solicitudesOrdenadas,
     out << "--------------------------------------------\n";
     out << "El Modulo C siguio literalmente la formula indicada en el "
         << "enunciado: peso = round(TotalCharges), valor = "
-        << "round(MonthlyCharges * 10), y capacidad W = " << capacidad << ".\n";
-    out << "Las 50 solicitudes consideradas corresponden a las primeras "
-        << "solicitudes activas (Churn == No) del arreglo ordenado por tenure "
+        << "round(MonthlyCharges * 10), y capacidad W = " << capacity << ".\n";
+    out << "Las 50 requests consideradas corresponden a las primeras "
+        << "requests activas (Churn == No) del arreglo ordenado por tenure "
         << "descendente; en esta instancia todas tienen tenure = 72.\n";
-    out << "Como 0 de las 50 solicitudes tienen peso <= " << capacidad
+    out << "Como 0 de las 50 requests tienen peso <= " << capacity
         << ", ninguna cabe en la mochila. Por eso la programacion dinamica "
-        << "devuelve valor optimo 0 y selecciona 0 solicitudes.\n";
+        << "devuelve valor optimo 0 y selecciona 0 requests.\n";
     out << "Por la misma razon, no puede construirse un contraejemplo codicioso "
-        << "valido dentro de esas 50 solicitudes con W = " << capacidad
+        << "valido dentro de esas 50 requests con W = " << capacity
         << ": tanto el codicioso por ratio v/w como la DP eligen el conjunto "
         << "vacio en cada trio evaluado.\n";
     out << "No se modifico W ni la formula de peso, porque hacerlo cambiaria "
         << "las reglas originales del enunciado.\n";
     out << "Para cumplir la rubrica del fallo codicioso sin inventar datos, "
-        << "se busca aparte una mini-instancia de exactamente 3 solicitudes "
+        << "se busca aparte una mini-instancia de exactamente 3 requests "
         << "reales del CSV, manteniendo peso = round(TotalCharges) y valor = "
         << "round(MonthlyCharges * 10), pero usando una capacidad W_ce propia "
         << "del contraejemplo.\n";
 
-    ContraejemploCodicioso contraejemploReal =
-        buscarContraejemploRealDataset(solicitudesOrdenadas, capacidad);
+    GreedyCounterexample realCE = findCounterexampleInDataset(sortedRequests, capacity);
 
     out << "\nContraejemplo valido con datos reales del CSV\n";
     out << "---------------------------------------------\n";
-    out << "Trios evaluados en la busqueda: "
-        << contraejemploReal.triosEvaluados << "\n";
+    out << "Trios evaluados en la busqueda: " << realCE.evaluatedTriples << "\n";
 
-    if (contraejemploReal.encontrado) {
-        out << "Capacidad de la mini-instancia W_ce: "
-            << contraejemploReal.capacidad << "\n";
+    if (realCE.found) {
+        out << "Capacidad de la mini-instancia W_ce: " << realCE.capacity << "\n";
         out << "Trio usado:\n";
-        imprimirTablaTrio(out, contraejemploReal.trio);
-
+        printTripleTable(out, realCE.triple);
         out << "\nComparacion requerida:\n";
-        imprimirComparacion(out,
-                            contraejemploReal.seleccionCodiciosa,
-                            contraejemploReal.valorCodicioso,
-                            contraejemploReal.seleccionOptima,
-                            contraejemploReal.valorOptimo,
-                            false);
+        printComparison(out, realCE.greedySelection, realCE.greedyValue,
+                        realCE.optimalSelection, realCE.optimalValue, false);
         out << "El codicioso toma primero la solicitud con mayor ratio v/w; "
             << "despues ya no le queda capacidad para agregar otra. La PD, "
             << "en cambio, evalua todas las combinaciones 0-1 y encuentra "
-            << "un par de solicitudes con mayor valor total.\n";
+            << "un par de requests con mayor valor total.\n";
     } else {
         out << "No se encontro un contraejemplo real con las condiciones "
             << "programadas. Esto deberia revisarse porque la rubrica exige "

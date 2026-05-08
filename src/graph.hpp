@@ -20,5 +20,5 @@ public:
     bool unite(int x, int y);
 };
 
-vector<Edge> buildGraph(const vector<Solicitud>& solicitudes,
+vector<Edge> buildGraph(const vector<Request>& requests,
                         vector<double>& groupAvg);

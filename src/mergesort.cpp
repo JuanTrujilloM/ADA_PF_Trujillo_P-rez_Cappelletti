@@ -3,13 +3,13 @@
 using namespace std;
 
 // Merges two sorted subarrays of arr. First subarray is arr[left..mid]
-static void merge(vector<Solicitud>& arr, int left, int mid, int right) {
+static void merge(vector<Request>& arr, int left, int mid, int right) {
 
     // arrayOne = arr[left..mid]
-    vector<Solicitud> arrayOne(arr.begin() + left, arr.begin() + mid + 1);
+    vector<Request> arrayOne(arr.begin() + left, arr.begin() + mid + 1);
     
     // arrayTwo = arr[mid+1..right]
-    vector<Solicitud> arrayTwo(arr.begin() + mid + 1, arr.begin() + right + 1);
+    vector<Request> arrayTwo(arr.begin() + mid + 1, arr.begin() + right + 1);
 
     int i = 0;
     int j = 0;
@@ -44,7 +44,7 @@ static void merge(vector<Solicitud>& arr, int left, int mid, int right) {
 }
 
 // Sorts arr[left..right] using merge()
-void mergeSort(vector<Solicitud>& arr, int left, int right) {
+void mergeSort(vector<Request>& arr, int left, int right) {
     // base case: single element
     if (left >= right)
         return;

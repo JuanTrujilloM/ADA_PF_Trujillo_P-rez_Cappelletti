@@ -26,7 +26,7 @@ static double roundTo2(double x) {
     return round(x * 100.0) / 100.0;
 }
 
-vector<Edge> buildGraph(const vector<Solicitud>& solicitudes,
+vector<Edge> buildGraph(const vector<Request>& requests,
                         vector<double>& groupAvg) {
     const int N = 20;
     groupAvg.assign(N, 0.0);
@@ -34,9 +34,9 @@ vector<Edge> buildGraph(const vector<Solicitud>& solicitudes,
     vector<double> sum(N, 0.0);
     vector<int>    cnt(N, 0);
 
-    for (int i = 0; i < (int)solicitudes.size(); i++) {
+    for (int i = 0; i < (int)requests.size(); i++) {
         int g = i % N;
-        sum[g] += solicitudes[i].monthlyCharges;
+        sum[g] += requests[i].monthlyCharges;
         cnt[g]++;
     }
 

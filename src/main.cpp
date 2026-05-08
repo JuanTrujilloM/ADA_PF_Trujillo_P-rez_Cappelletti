@@ -10,8 +10,8 @@
 
 using namespace std;
 
-static double measureTime(vector<Solicitud> sample, int n) {
-    vector<Solicitud> sub(sample.begin(), sample.begin() + n);
+static double measureTime(vector<Request> sample, int n) {
+    vector<Request> sub(sample.begin(), sample.begin() + n);
     auto start = chrono::high_resolution_clock::now();
     mergeSort(sub, 0, sub.size() - 1);
     auto end = chrono::high_resolution_clock::now();
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     // Module A
     int nullCount = 0;
-    vector<Solicitud> requests = parsearCSV(argv[1], nullCount);
+    vector<Request> requests = parseCSV(argv[1], nullCount);
 
     cout << "MODULE A\n";
     cout << "Records loaded: " << requests.size() << "\n";
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
     cout << "\nBinary searches:\n";
 
     for (int i = 0; i < 5; i++) {
-        int idx = busquedaBinaria(requests, 0, requests.size() - 1, queries[i]);
+        int idx = binarySearch(requests, 0, requests.size() - 1, queries[i]);
         string result = (idx != -1) ? requests[idx].customerID : "Not found";
         cout << names[i] << " (k=" << queries[i] << "): " << result << "\n";
         busOut << names[i] << " | k=" << queries[i] << " | customerID=" << result << "\n";
@@ -86,7 +86,8 @@ int main(int argc, char* argv[]) {
     cout << "File generated: results/mst_red.txt\n";
  
     // Module C
-    generarReporteAsignacionBW(requests);
+    generateBandwidthReport(requests);
+    cout << "\nMODULE C\n";
     cout << "File generated: results/asignacion_bw.txt\n";
 
     return 0;

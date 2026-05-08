@@ -1,12 +1,10 @@
 ﻿Modulo C - Asignacion de ancho de banda
-========================================
-
 Capacidad W: 500
-Numero de solicitudes consideradas: 50
+Numero de requests consideradas: 50
 Verificacion de entrada:
 - Vector recibido desde Modulo A ordenado por tenure descendente: OK
 - Filtro aplicado: Churn == "No" (campo churn == false).
-- Peso usado: round(TotalCharges) sobre Solicitud.totalCharges parseado como double.
+- Peso usado: round(TotalCharges) sobre Request.totalCharges parseado como double.
 - Valor usado: round(MonthlyCharges * 10).
 
 Solicitudes consideradas antes de la DP
@@ -62,13 +60,13 @@ customerID,tenure,MonthlyCharges,TotalCharges,peso,valor
 7169-YWAMK,72,68.40,4855.35,4855,684
 8398-TBIYD,72,84.70,6185.15,6185,847
 
-Cantidad de solicitudes consideradas con peso <= 500: 0
-Diagnostico: todas las 50 solicitudes consideradas tienen peso > 500. Con W = 500, ninguna solicitud puede entrar en la mochila; el enunciado produce una instancia degenerada para estos datos y formulas.
+Cantidad de requests consideradas con peso <= 500: 0
+Diagnostico: todas las 50 requests consideradas tienen peso > 500. Con W = 500, ninguna solicitud puede entrar en la mochila; el enunciado produce una instancia degenerada para estos datos y formulas.
 
 Resultado DP Mochila 0-1
 ------------------------
 Valor optimo total: 0
-Numero de solicitudes seleccionadas: 0
+Numero de requests seleccionadas: 0
 
 Solicitudes seleccionadas por PD Mochila 0-1
 customerID,peso,valor
@@ -77,8 +75,8 @@ customerID,peso,valor
 Contraejemplo codicioso por ratio v/w
 -------------------------------------
 Trios evaluados: 19600
-No se encontro un trio de solicitudes, dentro del conjunto de 50, donde el codicioso por ratio v/w tenga menor valor que la PD Mochila 0-1 con W = 500.
-Razon: ninguna de las 50 solicitudes cabe individualmente con W = 500; por eso, en todos los trios tanto el codicioso como la DP seleccionan el conjunto vacio con valor 0.
+No se encontro un trio de requests, dentro del conjunto de 50, donde el codicioso por ratio v/w tenga menor valor que la PD Mochila 0-1 con W = 500.
+Razon: ninguna de las 50 requests cabe individualmente con W = 500; por eso, en todos los trios tanto el codicioso como la DP seleccionan el conjunto vacio con valor 0.
 
 Mejor intento encontrado:
 Diferencia PD - codicioso: 0
@@ -103,11 +101,11 @@ El algoritmo es pseudopolinomial: su costo depende del valor numerico de W, no s
 Observacion sobre consistencia del enunciado
 --------------------------------------------
 El Modulo C siguio literalmente la formula indicada en el enunciado: peso = round(TotalCharges), valor = round(MonthlyCharges * 10), y capacidad W = 500.
-Las 50 solicitudes consideradas corresponden a las primeras solicitudes activas (Churn == No) del arreglo ordenado por tenure descendente; en esta instancia todas tienen tenure = 72.
-Como 0 de las 50 solicitudes tienen peso <= 500, ninguna cabe en la mochila. Por eso la programacion dinamica devuelve valor optimo 0 y selecciona 0 solicitudes.
-Por la misma razon, no puede construirse un contraejemplo codicioso valido dentro de esas 50 solicitudes con W = 500: tanto el codicioso por ratio v/w como la DP eligen el conjunto vacio en cada trio evaluado.
+Las 50 requests consideradas corresponden a las primeras requests activas (Churn == No) del arreglo ordenado por tenure descendente; en esta instancia todas tienen tenure = 72.
+Como 0 de las 50 requests tienen peso <= 500, ninguna cabe en la mochila. Por eso la programacion dinamica devuelve valor optimo 0 y selecciona 0 requests.
+Por la misma razon, no puede construirse un contraejemplo codicioso valido dentro de esas 50 requests con W = 500: tanto el codicioso por ratio v/w como la DP eligen el conjunto vacio en cada trio evaluado.
 No se modifico W ni la formula de peso, porque hacerlo cambiaria las reglas originales del enunciado.
-Para cumplir la rubrica del fallo codicioso sin inventar datos, se busca aparte una mini-instancia de exactamente 3 solicitudes reales del CSV, manteniendo peso = round(TotalCharges) y valor = round(MonthlyCharges * 10), pero usando una capacidad W_ce propia del contraejemplo.
+Para cumplir la rubrica del fallo codicioso sin inventar datos, se busca aparte una mini-instancia de exactamente 3 requests reales del CSV, manteniendo peso = round(TotalCharges) y valor = round(MonthlyCharges * 10), pero usando una capacidad W_ce propia del contraejemplo.
 
 Contraejemplo valido con datos reales del CSV
 ---------------------------------------------
@@ -125,4 +123,4 @@ Enfoque                 Solicitudes seleccionadas                          Valor
 --------------------------------------------------------------------------------------------------
 Codicioso ratio v/w     0673-IGUQO                                                 205          No
 PD Mochila 0-1          2220-IAHLS, 5766-ZJYBB                                     388          Si
-El codicioso toma primero la solicitud con mayor ratio v/w; despues ya no le queda capacidad para agregar otra. La PD, en cambio, evalua todas las combinaciones 0-1 y encuentra un par de solicitudes con mayor valor total.
+El codicioso toma primero la solicitud con mayor ratio v/w; despues ya no le queda capacidad para agregar otra. La PD, en cambio, evalua todas las combinaciones 0-1 y encuentra un par de requests con mayor valor total.

@@ -17,13 +17,13 @@ static vector<string> splitCSV(const string& line) {
 }
 
 // Reads the CSV and returns the vector of requests.
-vector<Solicitud> parsearCSV(const string& path, int& nullCount) {
+vector<Request> parseCSV(const string& path, int& nullCount) {
     ifstream file(path);
     if (!file.is_open()) {
         throw runtime_error("Could not open file: " + path);
     }
 
-    vector<Solicitud> requests;
+    vector<Request> requests;
     nullCount = 0;
     string line;
 
@@ -37,7 +37,7 @@ vector<Solicitud> parsearCSV(const string& path, int& nullCount) {
         vector<string> fields = splitCSV(line);
         if (fields.size() < 21) continue;
 
-        Solicitud s;
+        Request s;
         s.customerID = fields[0];
         s.tenure = stoi(fields[5]);
         s.monthlyCharges = stod(fields[18]);
