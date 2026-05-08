@@ -10,7 +10,7 @@
 ## Compilation
 
 ```bash
-g++ -std=c++17 -O2 -o ada_pf src/main.cpp src/*.cpp
+g++ -std=c++17 -O2 -o ada_pf src/*.cpp
 ```
 
 ## Execution
